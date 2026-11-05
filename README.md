@@ -1,122 +1,104 @@
-# Karahi House (Flask)
+# Karahi Site
 
-Online ordering site for a karahi restaurant, modeled on the Karahi House store on Hey Eats
-(https://app.heyeats.shop/store/karahi-house/shop). Built for **Web Engineering (CSE601330)**, Weeks 5-8:
-routing, Jinja2 templates, SQLAlchemy CRUD, forms, sessions and cookies.
-
-The live store loads its menu with JavaScript, so the dishes and prices in `app/seed.py` are
-representative placeholders. Address, phone and opening hours come from the store page.
+A Flask-based restaurant ordering and management application built for **Web Engineering (CSE601330)**. The project demonstrates routing, Jinja2 template inheritance, SQLAlchemy database operations, server-side form validation, sessions and cookies.
 
 ## Features
 
-- Menu with categories, search, tag filter, limited-time promotion, dish pages with modifiers
-  (spice level, add-ons), nutrition, allergens and reviews
-- Pick up / Delivery toggle (kept in the session and in a 30-day cookie)
-- Cart (guest or logged in, merged on login), checkout with server-side validation, delivery-zone
-  fees, coupons, payment method, loyalty points, order history and cancel
-- Accounts: register, login, profile, saved addresses (create/delete), favorites
-- Reviews: create, update, delete; admin replies
-- Table reservations, contact form
-- Admin panel (`/admin`): dashboard, order status workflow, and Create / Read / Update / Delete for
-  **every table** through one generic, validated CRUD view
+- Responsive restaurant menu with food photographs, categories, search and tag filters
+- Dish details with spice choices, add-ons, nutrition, ingredients and allergens
+- Customer registration, login, profile, saved addresses and favorites
+- Guest and customer carts, quantity updates, and pickup or delivery selection
+- Checkout with server-side validation, coupons and delivery-zone fees
+- Order confirmation, order history, cancellation and loyalty points
+- Customer review creation, editing and deletion
+- Table reservations and a contact form
+- Admin dashboard, order status management and database record management
 
-## Setup
+## Technology
 
-```bash
-python -m venv venv
-source venv/bin/activate        # Windows: venv\Scripts\activate
-pip install -r requirements.txt
-python run.py
+Python, Flask, Jinja2, Flask-SQLAlchemy, SQLAlchemy, SQLite, HTML, CSS and JavaScript. Render deployments use Gunicorn.
+
+## Run locally on Windows
+
+```powershell
+python -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+.\.venv\Scripts\python.exe run.py
 ```
 
-Open http://127.0.0.1:5000. The SQLite database (`instance/karahi.db`) is created and seeded on first run.
+Open **http://127.0.0.1:5000/**. The application creates the SQLite database and sample data automatically on first startup.
 
-Optional environment variables (see `.env.example`): `SECRET_KEY`, `DATABASE_URL`.
-Set a real `SECRET_KEY` outside development.
+For macOS or Linux, use `.venv/bin/python` in place of `.\.venv\Scripts\python.exe`.
 
-## Seed accounts
+## Configuration
 
-| Role     | Email                    | Password     |
-|----------|--------------------------|--------------|
-| Admin    | admin@karahihouse.test   | Admin12345   |
-| Customer | ayesha@example.com       | Customer123  |
+| Variable | Purpose |
+| --- | --- |
+| `SECRET_KEY` | Flask session signing key; set a random value when deploying |
+| `DATABASE_URL` | Optional database connection URL; defaults to `sqlite:///karahi.db` |
 
-Coupon to try at checkout: `WELCOME10` (10% off orders over $20).
-Delivery ZIPs: 94109, 94102, 94108, 94133, 94123.
+The local SQLite file is stored at `instance/karahi.db`.
 
-To reset the data, stop the app and delete `instance/karahi.db`.
+## Demo accounts
 
-## Tests
+| Role | Email | Password |
+| --- | --- | --- |
+| Admin | admin@karahihouse.test | Admin12345 |
+| Customer | ayesha@example.com | Customer123 |
 
-```bash
-pytest
-```
+Admin panel: **/admin/**.
 
-Covers the 40-table minimum, every public page, CSRF rejection, registration validation, the cart and
-checkout flow, review CRUD, admin access control, and admin CRUD on every table.
+Checkout coupon: **WELCOME10**, giving 10% off eligible orders with a subtotal of at least $20.
+
+Demo delivery ZIP codes: **94109, 94102, 94108, 94133, 94123**.
+
+The checkout is a demonstration and does not charge a real card. Use **Pay at counter** when presenting the project.
+
+## Database
+
+The project defines **47 SQLAlchemy tables**, covering accounts, menu items, ingredients, modifiers, carts, orders, payments, coupons, delivery, reservations, reviews and restaurant information. Foreign keys and ORM relationships connect the application data.
 
 ## Project structure
 
-```
-run.py                     entry point
+```text
+run.py                     Application entry point
+requirements.txt           Python dependencies
+render.yaml                Render service configuration
 app/
-  __init__.py              application factory, error handlers, context
+  __init__.py              Application factory and shared template context
   extensions.py            SQLAlchemy instance
-  models.py                47 models (tables) and relationships
-  utils.py                 auth guards, CSRF, validators, cart lookup
-  seed.py                  demo data
+  models.py                Database models and relationships
+  seed.py                  Sample restaurant and account data
+  presentation.py          Food image selection
+  utils.py                 Authentication, validation, CSRF and cart helpers
   blueprints/
-    main.py                home, menu, dish page, about, contact, reserve, order type
-    auth.py                register, login, logout
-    shop.py                cart, checkout, orders, profile, favorites, reviews
-    admin.py               dashboard, order status, generic CRUD for all tables
-  templates/               base.html + extends/blocks, macros in partials/
-  static/                  css, js, category images
-tests/test_app.py
+    main.py                Menu, contact, reservations and restaurant pages
+    auth.py                Registration, login and logout
+    shop.py                Cart, checkout, orders, profiles and reviews
+    admin.py               Admin dashboard and record management
+  templates/               Jinja2 templates and shared components
+  static/                  CSS, JavaScript and local images
+tests/test_app.py           Automated application tests
 ```
 
-## Database (47 tables)
+## Tests
 
-Users and accounts: roles, users, addresses, loyalty_accounts, loyalty_transactions, notifications.
-Menu: categories, menu_items, item_images, nutrition_info, tags, item_tags, allergens, item_allergens,
-ingredients, item_ingredients, suppliers, modifier_groups, modifier_options, item_modifier_groups,
-combos, combo_items.
-Cart and orders: carts, cart_items, cart_item_modifiers, orders, order_items, order_item_modifiers,
-order_status_history, payment_methods, payments, coupons, coupon_usages, promotions, promotion_items.
-Delivery: delivery_zones, delivery_drivers, deliveries.
-Store and engagement: store_info, opening_hours, holidays, dining_tables, reservations, reviews,
-review_replies, favorites, contact_messages.
+```powershell
+.\.venv\Scripts\python.exe -m pytest -q
+```
 
-## Security notes
+The supplied tests cover the table minimum, public pages, CSRF rejection, registration validation, cart and checkout, review CRUD, admin access control, admin table/form rendering and tag record CRUD.
 
-- Passwords hashed with Werkzeug; session cookie is HttpOnly and SameSite=Lax
-- CSRF token required on every POST
-- Post-Redirect-Get after every successful form submission, with flash messages
-- Login redirects only to same-site paths; users can only touch their own cart, addresses and reviews
+## Deploy on Render
 
-## Credits
+See [DEPLOY_RENDER.md](DEPLOY_RENDER.md) for deployment instructions. The build command is `pip install -r requirements.txt` and the start command is:
 
-Course material: Flask, Flask-SQLAlchemy and Jinja2 documentation patterns. Restaurant details
-from the public Karahi House store page.
+```bash
+gunicorn --workers 1 --threads 2 --bind 0.0.0.0:$PORT run:app
+```
 
-## Reference-style presentation
+SQLite data on a free Render web service is temporary. The seeded menu and demo accounts are recreated when an empty database is initialized.
 
-The storefront uses the reference's white/cream palette, dark buttons, restaurant logo and food
-banner, horizontal category navigation, two-column menu cards and a mobile menu. Home and `/menu`
-share inherited Jinja templates. Search, tag filtering, dish modifiers, cart, checkout, reservations,
-accounts and the admin panel continue to use the existing Flask routes and database.
+## Assets
 
-Food photographs are stored locally in `app/static/img/food/`; their original labels and source
-pages are recorded in `sources.json` in that folder. Reference restaurant photos are supplemented
-by the sources listed there for starters, lamb chops, chai and gulab jamun. Some photographs show
-related dishes as representative images for the existing sample menu. Dishes and prices remain
-the project's demo data, rather than the reference's complete live catalogue.
-
-`app/presentation.py` replaces the original seeded category illustrations at display time and
-preserves custom images saved by an administrator. No database migration or additional runtime
-dependency is needed. The schema remains 47 tables and the supplied Flask rubric is unchanged.
-
-Design verification: `python artifacts/verify_design.py` (requires Playwright in the verification
-environment and the Flask server on port 5000). Current screenshots and browser results are in
-`artifacts/redesign/`. The earlier technical audit in `artifacts/rubric-review.md` records backend
-issues separately; a visual redesign does not resolve those findings.
+Food photographs are stored locally in `app/static/img/food/`. Asset acknowledgments are recorded in [ASSET_CREDITS.md](ASSET_CREDITS.md).
