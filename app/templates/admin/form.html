@@ -1,0 +1,44 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf %}
+{% block title %}{{ mode }} {{ table }}{% endblock %}
+{% block content %}
+<section class="narrow">
+  <p><a href="{{ url_for('admin.list_rows', table=table) }}">&larr; {{ table }}</a></p>
+  <h1>{{ mode }} record</h1>
+  <form method="post" class="stack" novalidate>
+    {{ csrf() }}
+    {% for f in fields %}
+    <div class="field {{ 'has-error' if errors.get(f.name) }}">
+      {% if f.kind == 'checkbox' %}
+        <label class="choice"><input type="checkbox" name="{{ f.name }}" {{ 'checked' if values.get(f.name) }}> {{ f.name }}</label>
+      {% else %}
+        <label for="f-{{ f.name }}">{{ f.name }}{% if f.required %} *{% endif %}</label>
+        {% if f.kind == 'select' %}
+          <select id="f-{{ f.name }}" name="{{ f.name }}">
+            <option value="">{{ '— choose —' if f.required else '— none —' }}</option>
+            {% for val, label in f.options %}<option value="{{ val }}" {{ 'selected' if values.get(f.name)|string == val|string }}>{{ label }}</option>{% endfor %}
+          </select>
+        {% elif f.kind == 'textarea' %}
+          <textarea id="f-{{ f.name }}" name="{{ f.name }}" rows="4">{{ values.get(f.name) or '' }}</textarea>
+        {% else %}
+          {% set v = values.get(f.name) %}
+          <input id="f-{{ f.name }}" name="{{ f.name }}" type="{{ 'number' if f.kind in ('number', 'float') else f.kind }}"
+                 {% if f.kind == 'float' %}step="any"{% endif %}
+                 value="{% if v is not none %}{% if f.kind == 'datetime-local' and v.strftime is defined %}{{ v.strftime('%Y-%m-%dT%H:%M') }}{% else %}{{ v }}{% endif %}{% endif %}">
+        {% endif %}
+      {% endif %}
+      {% if errors.get(f.name) %}<small class="err">{{ errors[f.name] }}</small>{% endif %}
+    </div>
+    {% endfor %}
+    {% if is_user %}
+    <div class="field {{ 'has-error' if errors.get('password') }}">
+      <label for="f-password">password{% if not obj %} *{% endif %}</label>
+      <input id="f-password" name="password" type="password" autocomplete="new-password">
+      <small>{{ 'Leave blank to keep the current password.' if obj else '8+ characters.' }}</small>
+      {% if errors.get('password') %}<small class="err">{{ errors['password'] }}</small>{% endif %}
+    </div>
+    {% endif %}
+    <button class="btn">{{ 'Save changes' if obj else 'Create record' }}</button>
+  </form>
+</section>
+{% endblock %}

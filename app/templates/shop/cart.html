@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf %}
+{% block title %}Cart{% endblock %}
+{% block content %}
+<h1>Your cart</h1>
+{% if cart and cart.items %}
+<table class="table">
+  <thead><tr><th>Item</th><th>Qty</th><th class="num">Price</th><th></th></tr></thead>
+  <tbody>
+  {% for line in cart.items %}
+  <tr>
+    <td><strong>{{ line.item.name }}</strong>
+      {% if line.modifiers %}<br><small class="muted">{{ line.modifiers|map(attribute='option.name')|join(', ') }}</small>{% endif %}
+      {% if line.note %}<br><small class="muted">Note: {{ line.note }}</small>{% endif %}</td>
+    <td>
+      <form method="post" action="{{ url_for('shop.cart_update', line_id=line.id) }}" class="row">
+        {{ csrf() }}<input class="qty" name="quantity" type="number" min="1" max="20" value="{{ line.quantity }}" aria-label="Quantity for {{ line.item.name }}">
+        <button class="btn small ghost">Update</button>
+      </form>
+    </td>
+    <td class="num">${{ '%.2f'|format(line.line_total) }}</td>
+    <td><form method="post" action="{{ url_for('shop.cart_remove', line_id=line.id) }}">{{ csrf() }}<button class="link danger">Remove</button></form></td>
+  </tr>
+  {% endfor %}
+  </tbody>
+  <tfoot><tr><th colspan="2">Subtotal</th><th class="num">${{ '%.2f'|format(cart.subtotal) }}</th><td></td></tr></tfoot>
+</table>
+<p><a class="btn" href="{{ url_for('shop.checkout') }}">Checkout as {{ order_type }}</a>
+  <a class="btn ghost" href="{{ url_for('main.menu') }}">Add more</a></p>
+{% else %}
+<p>Your cart is empty. <a href="{{ url_for('main.menu') }}">Browse the menu</a>.</p>
+{% endif %}
+{% endblock %}

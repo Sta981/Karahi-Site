@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf, field %}
+{% block title %}Reserve a table{% endblock %}
+{% block content %}
+<section class="narrow">
+  <h1>Reserve a table</h1>
+  <form method="post" class="stack" novalidate>
+    {{ csrf() }}
+    {{ field('guest_name', 'Name for the booking', form, errors, autocomplete='name') }}
+    {{ field('guest_phone', 'Phone', form, errors, type='tel', autocomplete='tel') }}
+    {{ field('party_size', 'Party size', form, errors, type='number', hint='Up to 12 guests') }}
+    {{ field('when', 'Date and time', form, errors, type='datetime-local') }}
+    <button class="btn">Book table</button>
+  </form>
+</section>
+{% endblock %}

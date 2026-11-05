@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Visit{% endblock %}
+{% block content %}
+<h1>Visit Karahi House</h1>
+{% if store %}
+<p class="lead">{{ store.street }}, {{ store.city }} {{ store.zip_code }}<br>
+  <a href="tel:{{ store.phone }}">{{ store.phone }}</a></p>
+{% endif %}
+<h2>Hours</h2>
+<table class="table narrow">
+  <tbody>
+  {% for h in hours %}<tr><th scope="row">{{ days[h.weekday] }}</th><td>{{ h.opens }} – {{ h.closes }}</td></tr>{% endfor %}
+  </tbody>
+</table>
+{% if store and store.holidays %}
+<h2>Closed on</h2>
+<ul>{% for h in store.holidays %}<li>{{ h.on_date.strftime('%b %d') }}: {{ h.reason }}</li>{% endfor %}</ul>
+{% endif %}
+{% endblock %}

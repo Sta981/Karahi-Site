@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf %}
+{% block title %}Order #{{ order.id }}{% endblock %}
+{% block content %}
+<h1>Order #{{ order.id }} <span class="badge">{{ order.status.replace('_', ' ') }}</span></h1>
+<p class="muted">{{ order.order_type|capitalize }} for {{ order.customer_name }}, {{ order.created_at.strftime('%b %d, %I:%M %p') }}</p>
+{% if order.delivery %}<p>Delivering to {{ order.delivery.street }}, {{ order.delivery.zip_code }}{% if order.delivery.driver %}. Driver: {{ order.delivery.driver.name }}{% endif %}</p>{% endif %}
+<table class="table">
+  <tbody>
+  {% for i in order.items %}
+  <tr><td>{{ i.quantity }} × {{ i.name }}{% if i.modifiers %}<br><small class="muted">{{ i.modifiers|map(attribute='name')|join(', ') }}</small>{% endif %}</td>
+      <td class="num">${{ '%.2f'|format(i.unit_price * i.quantity) }}</td></tr>
+  {% endfor %}
+  </tbody>
+  <tfoot>
+    <tr><td>Subtotal</td><td class="num">${{ '%.2f'|format(order.subtotal) }}</td></tr>
+    {% if order.discount %}<tr><td>Discount</td><td class="num">−${{ '%.2f'|format(order.discount) }}</td></tr>{% endif %}
+    {% if order.delivery_fee %}<tr><td>Delivery</td><td class="num">${{ '%.2f'|format(order.delivery_fee) }}</td></tr>{% endif %}
+    <tr><th>Total</th><th class="num">${{ '%.2f'|format(order.total) }}</th></tr>
+  </tfoot>
+</table>
+{% if order.payment %}<p class="muted">Payment: {{ order.payment.method.name }} ({{ order.payment.status }})</p>{% endif %}
+<h2>Progress</h2>
+<ol class="timeline">{% for h in order.history %}<li>{{ h.status.replace('_', ' ') }} <span class="muted">{{ h.created_at.strftime('%I:%M %p') }}</span></li>{% endfor %}</ol>
+{% if current_user and order.user_id == current_user.id and order.status == 'placed' %}
+<form method="post" action="{{ url_for('shop.order_cancel', order_id=order.id) }}">{{ csrf() }}<button class="btn ghost danger">Cancel order</button></form>
+{% endif %}
+{% endblock %}

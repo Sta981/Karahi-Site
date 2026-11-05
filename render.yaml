@@ -1,0 +1,12 @@
+# Free classroom demo. SQLite data is recreated if Render replaces the filesystem.
+services:
+  - type: web
+    name: karahi-house
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 2 --bind 0.0.0.0:$PORT run:app
+    healthCheckPath: /
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true

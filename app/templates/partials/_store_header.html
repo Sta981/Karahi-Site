@@ -1,0 +1,21 @@
+{% from "partials/_icons.html" import icon %}
+<section class="store-intro" aria-label="Restaurant information">
+  <img class="store-banner" src="{{ url_for('static', filename='img/food/banner.png') }}" alt="Karahi curry and freshly grilled tandoori chicken" width="1128" height="250" fetchpriority="high">
+  <div class="order-controls">
+    <form method="post" action="{{ url_for('main.set_order_type') }}" class="segmented" aria-label="Order type">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}">
+      <button name="order_type" value="delivery" class="{{ 'on' if order_type == 'delivery' }}" aria-pressed="{{ 'true' if order_type == 'delivery' else 'false' }}">Delivery</button>
+      <button name="order_type" value="pickup" class="{{ 'on' if order_type == 'pickup' }}" aria-pressed="{{ 'true' if order_type == 'pickup' else 'false' }}">Pick up</button>
+    </form>
+    <span class="order-mode">{{ icon('bag', 16) }} {{ 'Delivery to your door' if order_type == 'delivery' else 'Freshly prepared for pickup' }}</span>
+  </div>
+  <h1>{{ store.name if store else 'Karahi House' }}</h1>
+  {% if store %}
+  <div class="store-facts">
+    <p>{{ icon('location', 18) }}<a href="{{ url_for('main.about') }}">{{ store.street }}, {{ store.city }}, CA {{ store.zip_code }}</a></p>
+    <p>{{ icon('phone', 18) }}<a class="phone" href="tel:{{ store.phone }}">{{ store.phone }}</a><span class="fact-divider">·</span><a href="{{ url_for('main.reserve') }}">Reserve a table {{ icon('arrow', 13) }}</a></p>
+    <p>{{ icon('clock', 18) }}<a href="{{ url_for('main.about') }}" class="hours-link">{{ store_status.text }} {{ icon('arrow', 13) }}</a></p>
+  </div>
+  {% endif %}
+</section>
