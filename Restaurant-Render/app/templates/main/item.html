@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf, badges %}
+{% block title %}{{ item.name }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('main.menu') }}">&larr; Menu</a></p>
+<section class="detail">
+  <img src="{{ menu_image(item) }}" alt="{{ item.name }}">
+  <div>
+    <h1>{{ item.name }}</h1>
+    <p class="meta">{{ badges(item) }}{% for t in item.tags %}<span class="badge">{{ t.name }}</span>{% endfor %}</p>
+    <p class="lead">{{ item.description }}</p>
+    <p class="price big">${{ '%.2f'|format(item.price) }}</p>
+
+    {% if item.is_available %}
+    <form method="post" action="{{ url_for('shop.cart_add', item_id=item.id) }}" class="stack">
+      {{ csrf() }}
+      {% for g in item.modifier_groups %}
+      <fieldset>
+        <legend>{{ g.name }}{% if g.is_required %} (required){% endif %}</legend>
+        {% for o in g.options %}
+        <label class="choice">
+          <input type="{{ 'checkbox' if g.allow_multiple else 'radio' }}" name="options" value="{{ o.id }}" {{ 'required' if g.is_required and not g.allow_multiple }}>
+          {{ o.name }}{% if o.extra_price %} <span class="muted">+${{ '%.2f'|format(o.extra_price) }}</span>{% endif %}
+        </label>
+        {% endfor %}
+      </fieldset>
+      {% endfor %}
+      <div class="field"><label for="note">Note for the kitchen</label><input id="note" name="note" maxlength="200"></div>
+      <div class="field narrow-field"><label for="quantity">Quantity</label><input id="quantity" name="quantity" type="number" min="1" max="20" value="1"></div>
+      <button class="btn">Add to cart</button>
+    </form>
+    {% else %}<p class="flash warning">Unavailable right now.</p>{% endif %}
+
+    {% if current_user %}
+    <form method="post" action="{{ url_for('shop.favorite_toggle', item_id=item.id) }}" class="inline">{{ csrf() }}<button class="link">Save or remove favorite</button></form>
+    {% endif %}
+  </div>
+</section>
+
+<section>
+  {% if item.nutrition %}<h2>Nutrition</h2><p class="muted">{{ item.nutrition.calories }} kcal &middot; {{ item.nutrition.protein_g }} g protein &middot; {{ item.nutrition.carbs_g }} g carbs &middot; {{ item.nutrition.fat_g }} g fat</p>{% endif %}
+  {% if item.allergens %}<p><strong>Contains:</strong> {{ item.allergens|join(', ') }}</p>{% endif %}
+  {% if item.ingredients %}<p><strong>Key ingredients:</strong> {{ item.ingredients|join(', ') }}</p>{% endif %}
+</section>
+
+<section>
+  <h2>Reviews {% if item.avg_rating %}<span class="muted">{{ item.avg_rating }} / 5</span>{% endif %}</h2>
+  {% for r in item.reviews|sort(attribute='created_at', reverse=true) %}
+  <article class="review">
+    <p><strong>{{ r.user.name }}</strong> <span class="rating">{{ r.rating }} / 5</span></p>
+    <p>{{ r.comment }}</p>
+    {% for rep in r.replies %}<p class="reply"><strong>{{ rep.user.name }}:</strong> {{ rep.body }}</p>{% endfor %}
+    {% if current_user and (current_user.id == r.user_id or current_user.is_admin) %}
+    <form method="post" action="{{ url_for('shop.review_delete', review_id=r.id) }}" class="inline">{{ csrf() }}<button class="link danger">Delete</button></form>
+    {% endif %}
+    {% if current_user and current_user.is_admin %}
+    <form method="post" action="{{ url_for('shop.review_reply', review_id=r.id) }}" class="row">{{ csrf() }}<input name="body" placeholder="Reply as the restaurant" required><button class="btn small">Reply</button></form>
+    {% endif %}
+  </article>
+  {% else %}<p class="muted">No reviews yet.</p>{% endfor %}
+
+  {% if current_user %}
+  <form method="post" action="{{ url_for('shop.review_save', item_id=item.id) }}" class="stack">
+    {{ csrf() }}
+    <h3>{{ 'Edit your review' if my_review else 'Write a review' }}</h3>
+    <div class="field narrow-field"><label for="rating">Rating (1–5)</label><input id="rating" name="rating" type="number" min="1" max="5" value="{{ my_review.rating if my_review }}" required></div>
+    <div class="field"><label for="comment">Comment</label><textarea id="comment" name="comment" rows="3" maxlength="1000">{{ my_review.comment if my_review }}</textarea></div>
+    <button class="btn small">{{ 'Update review' if my_review else 'Post review' }}</button>
+  </form>
+  {% else %}<p><a href="{{ url_for('auth.login', next=request.path) }}">Log in</a> to leave a review.</p>{% endif %}
+</section>
+{% endblock %}

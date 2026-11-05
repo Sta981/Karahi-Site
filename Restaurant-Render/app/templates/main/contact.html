@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import csrf, field %}
+{% block title %}Contact{% endblock %}
+{% block content %}
+<section class="narrow">
+  <h1>Contact us</h1>
+  <form method="post" class="stack" novalidate>
+    {{ csrf() }}
+    {{ field('name', 'Your name', form, errors, autocomplete='name') }}
+    {{ field('email', 'Email', form, errors, type='email', autocomplete='email') }}
+    <div class="field {{ 'has-error' if errors.message }}">
+      <label for="message">Message</label>
+      <textarea id="message" name="message" rows="5" required>{{ form.get('message', '') }}</textarea>
+      {% if errors.message %}<small class="err">{{ errors.message }}</small>{% endif %}
+    </div>
+    <button class="btn">Send message</button>
+  </form>
+</section>
+{% endblock %}

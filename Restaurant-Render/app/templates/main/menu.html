@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% from "partials/_macros.html" import item_card %}
+{% from "partials/_icons.html" import icon %}
+{% block title %}Menu{% endblock %}
+{% block content %}
+{% include "partials/_store_header.html" %}
+<section class="menu-heading" aria-label="Find a dish">
+  <h2>Our Menu</h2>
+  <form class="filters" method="get" action="{{ url_for('main.menu') }}" role="search">
+    <div class="search-field"><input type="search" name="q" value="{{ q }}" placeholder="Search menu" aria-label="Search dishes"><button type="submit" class="search-submit" aria-label="Search menu">{{ icon('search', 21) }}</button></div>
+    <select name="tag" aria-label="Filter by tag"><option value="">All dishes</option>{% for t in tags %}<option value="{{ t.id }}" {{ 'selected' if active_tag == t.id }}>{{ t.name }}</option>{% endfor %}</select>
+    <button class="btn small filter-apply">Apply</button>
+  </form>
+</section>
+{% if categories %}
+<nav class="category-bar" aria-label="Menu categories"><span class="category-symbol">{{ icon('list', 23) }}</span><div class="category-tabs">
+  {% for cat, items in categories %}<a href="#{{ cat.slug }}" class="category-tab {{ 'active' if loop.first }}"{% if loop.first %} aria-current="location"{% endif %}>{{ cat.name }}</a>{% endfor %}
+</div></nav>
+{% endif %}
+{% if q or active_tag %}<div class="search-results"><p>{{ count }} result{{ '' if count == 1 else 's' }}{% if q %} for ?{{ q }}?{% endif %}</p><a href="{{ url_for('main.menu') }}">Clear filters</a></div>{% endif %}
+{% for p in promos %}
+<details class="promo"><summary><span class="offer-label">SPECIAL OFFER</span> {{ p.title }} <span class="offer-more">View offer +</span></summary><div class="offer-body"><p>{{ p.description }}{% if p.ends_on %} Ends {{ p.ends_on.strftime('%b %d, %Y') }}.{% endif %}</p>{% for pi in p.items %}<p><a href="{{ url_for('main.item_detail', item_id=pi.item.id) }}">{{ pi.item.name }}</a>: <strong>${{ '%.2f'|format(pi.promo_price) }}</strong> <s>${{ '%.2f'|format(pi.item.price) }}</s></p>{% endfor %}</div></details>
+{% endfor %}
+{% for cat, items in categories %}
+<section id="{{ cat.slug }}" class="menu-section" aria-labelledby="heading-{{ cat.slug }}"><h2 id="heading-{{ cat.slug }}">{{ cat.name }}</h2><div class="items">{% for item in items %}{{ item_card(item) }}{% endfor %}</div></section>
+{% else %}<div class="empty-state">{{ icon('search', 32) }}<h2>No dishes found</h2><p>Try another search or browse the full menu.</p><a class="btn" href="{{ url_for('main.menu') }}">Show the full menu</a></div>{% endfor %}
+{% endblock %}
