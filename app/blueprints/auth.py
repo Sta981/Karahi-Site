@@ -48,8 +48,16 @@ def login():
         email = request.form.get("email", "").strip().lower()
         user = User.query.filter_by(email=email).first()
         if user and check_password_hash(user.password_hash, request.form.get("password", "")):
+            guest_cart_key = session.get("cart_key")
+            order_type = session.get("order_type")
             session.clear()
             session["user_id"] = user.id
+            if guest_cart_key:
+                session["cart_key"] = guest_cart_key
+            if order_type:
+                session["order_type"] = order_type
+            from ..utils import current_cart
+            current_cart(create=False)
             flash(f"Welcome back, {user.name.split()[0]}.", "success")
             return redirect(safe_next(request.args.get("next")) or url_for("main.menu"))
         error = "Email or password is incorrect."

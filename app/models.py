@@ -115,6 +115,18 @@ class MenuItem(db.Model):
     modifier_groups = db.relationship("ModifierGroup", secondary="item_modifier_groups", back_populates="items")
     ingredients = db.relationship("Ingredient", secondary="item_ingredients", back_populates="items")
 
+    promotion_items = db.relationship("PromotionItem", back_populates="item")
+
+    @property
+    def effective_price(self):
+        from datetime import date
+        today = date.today()
+        for pi in self.promotion_items:
+            promo = pi.promotion
+            if promo and (not promo.starts_on or promo.starts_on <= today) and (not promo.ends_on or promo.ends_on >= today):
+                return pi.promo_price
+        return self.price
+
     @property
     def avg_rating(self):
         rated = [r.rating for r in self.reviews]
@@ -156,8 +168,9 @@ class Tag(db.Model):
 
 class ItemTag(db.Model):
     __tablename__ = "item_tags"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), primary_key=True)
-    tag_id = db.Column(db.Integer, db.ForeignKey("tags.id"), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
+    tag_id = db.Column(db.Integer, db.ForeignKey("tags.id"), nullable=False)
 
 
 class Allergen(db.Model):
@@ -172,8 +185,9 @@ class Allergen(db.Model):
 
 class ItemAllergen(db.Model):
     __tablename__ = "item_allergens"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), primary_key=True)
-    allergen_id = db.Column(db.Integer, db.ForeignKey("allergens.id"), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
+    allergen_id = db.Column(db.Integer, db.ForeignKey("allergens.id"), nullable=False)
 
 
 class Ingredient(db.Model):
@@ -190,8 +204,9 @@ class Ingredient(db.Model):
 
 class ItemIngredient(db.Model):
     __tablename__ = "item_ingredients"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), primary_key=True)
-    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False)
 
 
 class Supplier(db.Model):
@@ -233,8 +248,9 @@ class ModifierOption(db.Model):
 
 class ItemModifierGroup(db.Model):
     __tablename__ = "item_modifier_groups"
-    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), primary_key=True)
-    group_id = db.Column(db.Integer, db.ForeignKey("modifier_groups.id"), primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
+    group_id = db.Column(db.Integer, db.ForeignKey("modifier_groups.id"), nullable=False)
 
 
 class Combo(db.Model):
@@ -288,7 +304,7 @@ class CartItem(db.Model):
 
     @property
     def unit_price(self):
-        return self.item.price + sum(m.option.extra_price or 0 for m in self.modifiers)
+        return self.item.effective_price + sum(m.option.extra_price or 0 for m in self.modifiers)
 
     @property
     def line_total(self):
@@ -421,7 +437,7 @@ class PromotionItem(db.Model):
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
     promo_price = db.Column(db.Float, nullable=False)
     promotion = db.relationship("Promotion", back_populates="items")
-    item = db.relationship("MenuItem")
+    item = db.relationship("MenuItem", back_populates="promotion_items")
 
 
 # ---------- Delivery ----------

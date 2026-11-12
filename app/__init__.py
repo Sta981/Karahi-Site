@@ -37,14 +37,23 @@ def create_app(config=None):
 
     @app.context_processor
     def inject_globals():
+        from flask import request
         from .models import StoreInfo
+        order_type = session.get("order_type")
+        if not order_type:
+            cookie_pref = request.cookies.get("preferred_order_type")
+            if cookie_pref in ("delivery", "pickup"):
+                order_type = cookie_pref
+                session["order_type"] = order_type
+            else:
+                order_type = "pickup"
         return {
             "current_user": current_user(),
             "cart": current_cart(create=False),
             "store": StoreInfo.query.first(),
             "store_status": store_status(),
             "year": datetime.now(timezone.utc).year,
-            "order_type": session.get("order_type", "pickup"),
+            "order_type": order_type,
         }
 
     @app.errorhandler(404)

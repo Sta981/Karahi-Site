@@ -189,7 +189,8 @@ def order_detail(order_id):
     order = db.session.get(Order, order_id) or abort(404)
     user = current_user()
     owns = user and (order.user_id == user.id or user.is_admin)
-    if not owns and request.args.get("token") != _token(order):
+    is_guest_with_token = (order.user_id is None) and (request.args.get("token") == _token(order))
+    if not owns and not is_guest_with_token:
         abort(404)
     return render_template("shop/order_detail.html", order=order)
 
