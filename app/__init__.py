@@ -8,9 +8,13 @@ from .extensions import db
 
 def create_app(config=None):
     app = Flask(__name__)
+    db_url = os.environ.get("DATABASE_URL", "sqlite:///karahi.db")
+    if db_url and db_url.startswith("postgres://"):
+        db_url = db_url.replace("postgres://", "postgresql://", 1)
+
     app.config.update(
         SECRET_KEY=os.environ.get("SECRET_KEY", "dev-secret-change-me"),
-        SQLALCHEMY_DATABASE_URI=os.environ.get("DATABASE_URL", "sqlite:///karahi.db"),
+        SQLALCHEMY_DATABASE_URI=db_url,
         SQLALCHEMY_TRACK_MODIFICATIONS=False,
         SESSION_COOKIE_HTTPONLY=True,
         SESSION_COOKIE_SAMESITE="Lax",
