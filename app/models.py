@@ -1,5 +1,5 @@
 """All 42 SQLAlchemy models for the Karahi House site, grouped by domain."""
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from .extensions import db
 
@@ -578,3 +578,62 @@ class ContactMessage(TimestampMixin, db.Model):
     email = db.Column(db.String(120), nullable=False)
     message = db.Column(db.Text, nullable=False)
     is_resolved = db.Column(db.Boolean, default=False)
+
+
+# ---------- Staff & HR Management (RestroIQ) ----------
+class StaffMember(TimestampMixin, db.Model):
+    __tablename__ = "staff_members"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    name = db.Column(db.String(80), nullable=False)
+    role = db.Column(db.String(50), nullable=False)  # Lead Operations, Head Chef, Cooker, Waiter / Server, Sales Manager
+    phone = db.Column(db.String(30))
+    email = db.Column(db.String(120))
+    salary_monthly = db.Column(db.Float, default=2500.0)
+    shift_status = db.Column(db.String(20), default="On Duty")  # On Duty, Off Duty, On Break
+    shift_hours_done = db.Column(db.Float, default=6.0)
+    shift_hours_total = db.Column(db.Float, default=10.0)
+    avatar_url = db.Column(db.String(255))
+    joined_date = db.Column(db.Date, default=date.today)
+
+    user = db.relationship("User")
+    leaves = db.relationship("StaffLeave", back_populates="staff", cascade="all, delete-orphan")
+    payroll_records = db.relationship("StaffPayroll", back_populates="staff", cascade="all, delete-orphan")
+
+    def __str__(self):
+        return f"{self.name} ({self.role})"
+
+
+class StaffLeave(TimestampMixin, db.Model):
+    __tablename__ = "staff_leaves"
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey("staff_members.id"), nullable=False)
+    leave_type = db.Column(db.String(40), default="Sick Leave")  # Sick Leave, Casual Leave, Annual Leave, Emergency
+    start_date = db.Column(db.Date, nullable=False)
+    end_date = db.Column(db.Date, nullable=False)
+    reason = db.Column(db.Text, nullable=False)
+    status = db.Column(db.String(20), default="Pending")  # Pending, Approved, Rejected
+
+    staff = db.relationship("StaffMember", back_populates="leaves")
+
+    def __str__(self):
+        return f"{self.staff.name if self.staff else 'Staff'} - {self.leave_type} ({self.status})"
+
+
+class StaffPayroll(TimestampMixin, db.Model):
+    __tablename__ = "staff_payrolls"
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey("staff_members.id"), nullable=False)
+    month = db.Column(db.String(20), nullable=False)
+    year = db.Column(db.Integer, nullable=False)
+    base_salary = db.Column(db.Float, nullable=False)
+    bonus = db.Column(db.Float, default=0.0)
+    deductions = db.Column(db.Float, default=0.0)
+    net_salary = db.Column(db.Float, nullable=False)
+    payment_status = db.Column(db.String(20), default="Paid")  # Paid, Pending
+
+    staff = db.relationship("StaffMember", back_populates="payroll_records")
+
+    def __str__(self):
+        return f"{self.staff.name if self.staff else 'Staff'} - {self.month} {self.year}: ${self.net_salary:.2f}"
+

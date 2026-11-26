@@ -1,2 +1,154 @@
-{% extends "main/menu.html" %}
-{% block title %}Order online{% endblock %}
+{% extends 'base.html' %}
+{% from 'partials/_macros.html' import item_card %}
+
+{% block title %}Authentic Pakistani Dining & Cloud Kitchen{% endblock %}
+
+{% block content %}
+<!-- Luxury Hero Section -->
+<section class="lux-hero">
+  <div class="lux-copy">
+    <span class="lux-eyebrow">✦ FROM OUR SIZZLING WOK TO YOUR TABLE</span>
+    <h1>Real fire.<br>Rich flavour.<br><em>Karahi House.</em></h1>
+    <p>Experience the heritage and warmth of authentic Pakistani cooking — sizzling clay-pot karahis, smoky charcoal tandoor, and aromatic dum biryanis crafted for every feast.</p>
+    
+    <div class="lux-actions">
+      <a class="lux-btn" href="{{ url_for('main.menu') }}">
+        <span>Explore the Menu</span>
+        <span aria-hidden="true">→</span>
+      </a>
+      <a class="lux-outline" href="{{ url_for('main.reserve') }}">Reserve a Table</a>
+    </div>
+
+    <div class="lux-trust-badges" style="display:flex;gap:1.5rem;flex-wrap:wrap;margin-top:2rem;font-size:0.875rem;color:var(--text-muted,#6b7280);">
+      <span style="display:inline-flex;align-items:center;gap:0.4rem;font-weight:600;color:#e11d48;">
+        ★ 4.9/5 Rating <small style="font-weight:400;color:#6b7280;">(1,240+ reviews)</small>
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:0.4rem;font-weight:500;">
+        ⚡ 30-Min Hot Express Delivery
+      </span>
+      <span style="display:inline-flex;align-items:center;gap:0.4rem;font-weight:500;">
+        ✦ 100% Certified Halal
+      </span>
+    </div>
+  </div>
+
+  <div class="lux-photo">
+    <img src="{{ url_for('static', filename='img/food/chicken-karahi.jpg') }}" alt="Signature Chicken Karahi cooked with fresh tomatoes, ginger, and green chilies" fetchpriority="high">
+    <div class="lux-photo-label">
+      <small>CHEF'S SIGNATURE SPECIAL</small>
+      <strong>Desi Chicken Karahi</strong>
+      <span>Bold · Rustic · Sizzling on Order</span>
+    </div>
+  </div>
+</section>
+
+<!-- Value Proposition Strip -->
+<section class="lux-strip" aria-label="Our Restaurant Commitments">
+  <div>
+    <strong>01</strong>
+    <span>Cooked Fresh &amp; Sizzling to Order</span>
+  </div>
+  <div>
+    <strong>02</strong>
+    <span>Heirloom Spices &amp; Secret Recipes</span>
+  </div>
+  <div>
+    <strong>03</strong>
+    <span>Doorstep Delivery &amp; VIP Table Booking</span>
+  </div>
+  <div>
+    <strong>04</strong>
+    <span>RestroIQ Smart POS &amp; Live Tracking</span>
+  </div>
+</section>
+
+<!-- Menu Category Explorer -->
+<section class="lux-section">
+  <div class="lux-heading">
+    <div>
+      <span class="lux-eyebrow">CURATED MENUS</span>
+      <h2>A Table Full of Sensation.</h2>
+    </div>
+    <a href="{{ url_for('main.menu') }}">View Full Menu →</a>
+  </div>
+  
+  <div class="lux-categories">
+    {% for cat, items in categories %}
+      {% if items %}
+      <a href="{{ url_for('main.menu') }}#{{ cat.slug }}" class="lux-cat">
+        <img src="{{ menu_image(items[0]) }}" alt="{{ cat.name }}" loading="lazy">
+        <span>{{ cat.name }} <b>↗</b></span>
+      </a>
+      {% endif %}
+    {% endfor %}
+  </div>
+</section>
+
+<!-- Signature Dishes Showcase -->
+<section class="lux-section">
+  <div class="lux-heading">
+    <div>
+      <span class="lux-eyebrow">HOT &amp; POPULAR DISHES</span>
+      <h2>Discover Our Most Loved Signatures.</h2>
+    </div>
+    <a href="{{ url_for('main.menu') }}">Browse 30+ Delicacies →</a>
+  </div>
+
+  <div class="items">
+    {% set count = namespace(n=0) %}
+    {% for cat, items in categories %}
+      {% for item in items %}
+        {% if (item.is_spicy or item.is_featured or 'Karahi' in cat.name or 'Tandoor' in cat.name or 'Biryani' in cat.name) and count.n < 6 %}
+          {{ item_card(item) }}
+          {% set count.n = count.n + 1 %}
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+  </div>
+</section>
+
+<!-- RestroIQ Smart Experience Cards -->
+<section class="lux-section" style="background:#fff;border-radius:24px;padding:3rem 2rem;margin-top:3rem;border:1px solid #f1f1f4;box-shadow:0 8px 30px rgba(0,0,0,0.03);">
+  <div class="lux-heading" style="text-align:center;margin-bottom:2.5rem;">
+    <div style="width:100%;">
+      <span class="lux-eyebrow" style="display:inline-block;color:#FF5B35;font-weight:700;">WHY RESTROIQ &amp; KARAHI HOUSE</span>
+      <h2 style="font-size:2rem;margin-top:0.5rem;">Next-Generation Dining Experience</h2>
+      <p style="color:#6b7280;max-width:600px;margin:0.5rem auto 0 auto;font-size:0.95rem;">Combining traditional culinary mastery with RestroIQ's modern restaurant management, live kitchen telemetry, and effortless booking.</p>
+    </div>
+  </div>
+
+  <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(260px, 1fr));gap:2rem;">
+    <div style="background:#fcfbf9;border-radius:18px;padding:2rem;border:1px solid #f0eee9;transition:transform 0.2s ease;">
+      <div style="width:48px;height:48px;background:rgba(255,91,53,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#FF5B35;font-size:1.5rem;margin-bottom:1.25rem;">🔥</div>
+      <h3 style="font-size:1.2rem;margin-bottom:0.5rem;font-weight:700;">Clay-Pot Fire Cooking</h3>
+      <p style="color:#6b7280;font-size:0.9rem;line-height:1.6;">Prepared on high flame in cast-iron karahis with real desi ghee, ginger juliennes, and farm-fresh spices.</p>
+    </div>
+
+    <div style="background:#fcfbf9;border-radius:18px;padding:2rem;border:1px solid #f0eee9;transition:transform 0.2s ease;">
+      <div style="width:48px;height:48px;background:rgba(255,91,53,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#FF5B35;font-size:1.5rem;margin-bottom:1.25rem;">📱</div>
+      <h3 style="font-size:1.2rem;margin-bottom:0.5rem;font-weight:700;">Smart Real-Time POS</h3>
+      <p style="color:#6b7280;font-size:0.9rem;line-height:1.6;">Powered by RestroIQ Cloud Engine — live kitchen displays (KDS), automated shifts, and instant status updates.</p>
+    </div>
+
+    <div style="background:#fcfbf9;border-radius:18px;padding:2rem;border:1px solid #f0eee9;transition:transform 0.2s ease;">
+      <div style="width:48px;height:48px;background:rgba(255,91,53,0.12);border-radius:12px;display:flex;align-items:center;justify-content:center;color:#FF5B35;font-size:1.5rem;margin-bottom:1.25rem;">🍽️</div>
+      <h3 style="font-size:1.2rem;margin-bottom:0.5rem;font-weight:700;">Instant Table Reservation</h3>
+      <p style="color:#6b7280;font-size:0.9rem;line-height:1.6;">Reserve your dining or VIP celebration booth online with instant confirmation and tailored dining menus.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Brand Story & Reservation Call to Action -->
+<section class="lux-story" style="margin-top:3.5rem;">
+  <img src="{{ url_for('static', filename='img/food/seekh-kebab.jpg') }}" alt="Freshly grilled seekh kebabs on sizzling iron skewer" loading="lazy">
+  <div>
+    <span class="lux-eyebrow">THE RESTROIQ EXPERIENCE</span>
+    <h2>Good food.<br>Better company.</h2>
+    <p>Whether it’s a family weekend celebration, corporate lunch, or midnight craving, we set the table for unforgettable moments. Reserve your table or order online today.</p>
+    <div style="display:flex;gap:1rem;flex-wrap:wrap;align-items:center;">
+      <a class="lux-btn" href="{{ url_for('main.reserve') }}">Book Your Table →</a>
+      <a class="lux-story-link" href="{{ url_for('main.about') }}">View Hours &amp; Location</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

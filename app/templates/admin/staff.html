@@ -1,0 +1,286 @@
+{% extends 'admin/base.html' %}
+{% block title %}Staff & HR Hub{% endblock %}
+{% block page_title %}Staff & Operations HR{% endblock %}
+
+{% block content %}
+<div class="staff-dashboard">
+
+  <!-- TOP KPI ROW -->
+  <div class="staff-kpi-row">
+    <div class="kpi-card">
+      <span class="kpi-title">Total Staff</span>
+      <h2 class="kpi-number">{{ all_staff|length }}</h2>
+      <small>Chefs, Waiters & Ops</small>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-title">Currently On Duty</span>
+      <h2 class="kpi-number" style="color:#247a5b;">{{ on_duty_count }}</h2>
+      <span class="trend-pill trend-up">Active Shift</span>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-title">Pending Leave Requests</span>
+      <h2 class="kpi-number" style="color:#d76248;">{{ pending_leaves }}</h2>
+      <small>Requires Manager Review</small>
+    </div>
+    <div class="kpi-card">
+      <span class="kpi-title">Monthly Payroll Budget</span>
+      <h2 class="kpi-number">${{ '%.2f'|format(total_payroll) }}</h2>
+      <small>Total Active Salaries</small>
+    </div>
+  </div>
+
+  <!-- LEAVE REQUESTS ACTION SECTION -->
+  <div class="content-card" style="margin-bottom:24px;">
+    <div class="card-header-flex">
+      <div>
+        <h3 class="card-section-title">Leave Applications & Approvals</h3>
+        <p class="muted">Review and manage time-off requests submitted by chefs, servers, and staff.</p>
+      </div>
+      <button class="btn secondary" onclick="document.getElementById('leave-modal').showModal()">+ Submit Leave Request</button>
+    </div>
+
+    <div class="table-responsive">
+      <table class="restroiq-table">
+        <thead>
+          <tr>
+            <th>STAFF MEMBER</th>
+            <th>ROLE</th>
+            <th>LEAVE TYPE</th>
+            <th>DATES</th>
+            <th>REASON</th>
+            <th>STATUS</th>
+            <th>DECISION</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for l in leaves %}
+          <tr>
+            <td><strong>{{ l.staff.name }}</strong></td>
+            <td><span class="role-pill">{{ l.staff.role }}</span></td>
+            <td>{{ l.leave_type }}</td>
+            <td>{{ l.start_date.strftime('%b %d') }} – {{ l.end_date.strftime('%b %d, %Y') }}</td>
+            <td style="max-width:260px;">{{ l.reason }}</td>
+            <td>
+              <span class="status-badge status-{{ l.status|lower }}">{{ l.status }}</span>
+            </td>
+            <td>
+              {% if l.status == 'Pending' %}
+              <div style="display:flex; gap:6px;">
+                <form action="{{ url_for('admin.leave_action', leave_id=l.id, action='approve') }}" method="post" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-action-approve">Approve</button>
+                </form>
+                <form action="{{ url_for('admin.leave_action', leave_id=l.id, action='reject') }}" method="post" style="display:inline;">
+                  <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+                  <button type="submit" class="btn-action-reject">Reject</button>
+                </form>
+              </div>
+              {% else %}
+              <small class="muted">Processed</small>
+              {% endif %}
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="empty">No leave requests currently pending.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- STAFF DIRECTORY & SHIFT CONTROL -->
+  <div class="content-card" style="margin-bottom:24px;">
+    <div class="card-header-flex">
+      <div>
+        <h3 class="card-section-title">Staff Roster & Shift Status</h3>
+        <p class="muted">Real-time status of restaurant team. Toggle shift status directly.</p>
+      </div>
+      <button class="btn" onclick="document.getElementById('staff-modal').showModal()">+ Add New Staff</button>
+    </div>
+
+    <div class="staff-cards-grid">
+      {% for s in all_staff %}
+      <div class="staff-profile-card">
+        <div class="staff-card-top">
+          <img class="staff-big-avatar" src="https://images.unsplash.com/photo-{{ loop.cycle('1507003211169-0a1dd7228f2d', '1500648767791-00dcc994a43e', '1492562080023-ab3db95bfbce', '1534528741775-53994a69daeb', '1522075469751-3a6694fb2f61', '1517841905240-472988babdf9') }}?auto=format&fit=crop&w=140&q=80" alt="{{ s.name }}">
+          <div>
+            <h4 class="staff-name">{{ s.name }}</h4>
+            <span class="role-badge">{{ s.role }}</span>
+            <div class="staff-contact-line">📞 {{ s.phone or '415-555-0100' }}</div>
+          </div>
+        </div>
+
+        <div class="staff-card-stats">
+          <div>
+            <small>Monthly Salary</small>
+            <strong>${{ '%.2f'|format(s.salary_monthly) }}</strong>
+          </div>
+          <div>
+            <small>Shift Progress</small>
+            <strong>{{ '%.0f'|format(s.shift_hours_done) }} / {{ '%.0f'|format(s.shift_hours_total) }}h</strong>
+          </div>
+        </div>
+
+        <div class="shift-switcher">
+          <span class="shift-label">Shift Status:</span>
+          <div class="shift-pill-buttons">
+            <form action="{{ url_for('admin.staff_shift', staff_id=s.id, status='On Duty') }}" method="post" style="display:inline;">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button class="shift-btn {{ 'active-duty' if s.shift_status == 'On Duty' }}">On Duty</button>
+            </form>
+            <form action="{{ url_for('admin.staff_shift', staff_id=s.id, status='On Break') }}" method="post" style="display:inline;">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button class="shift-btn {{ 'active-break' if s.shift_status == 'On Break' }}">Break</button>
+            </form>
+            <form action="{{ url_for('admin.staff_shift', staff_id=s.id, status='Off Duty') }}" method="post" style="display:inline;">
+              <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+              <button class="shift-btn {{ 'active-off' if s.shift_status == 'Off Duty' }}">Off</button>
+            </form>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+
+  <!-- PAYROLL & SALARIES SECTION -->
+  <div class="content-card">
+    <div class="card-header-flex">
+      <div>
+        <h3 class="card-section-title">Payroll & Salary Disbursements</h3>
+        <p class="muted">Disbursed compensation records for kitchen, service, and administrative personnel.</p>
+      </div>
+    </div>
+
+    <div class="table-responsive">
+      <table class="restroiq-table">
+        <thead>
+          <tr>
+            <th>STAFF MEMBER</th>
+            <th>PERIOD</th>
+            <th>BASE SALARY</th>
+            <th>BONUS</th>
+            <th>DEDUCTIONS</th>
+            <th>NET PAYOUT</th>
+            <th>PAYMENT STATUS</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for p in payrolls %}
+          <tr>
+            <td><strong>{{ p.staff.name }}</strong> ({{ p.staff.role }})</td>
+            <td>{{ p.month }} {{ p.year }}</td>
+            <td>${{ '%.2f'|format(p.base_salary) }}</td>
+            <td style="color:#247a5b;">+${{ '%.2f'|format(p.bonus) }}</td>
+            <td style="color:#ac3a35;">-${{ '%.2f'|format(p.deductions) }}</td>
+            <td><strong>${{ '%.2f'|format(p.net_salary) }}</strong></td>
+            <td>
+              <span class="status-badge status-{{ p.payment_status|lower }}">{{ p.payment_status }}</span>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="empty">No payroll records logged for this cycle.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+</div>
+
+<!-- MODAL: ADD NEW STAFF -->
+<dialog id="staff-modal" class="restroiq-dialog">
+  <div class="dialog-box">
+    <div class="dialog-head">
+      <h3>Add New Staff Member</h3>
+      <button onclick="document.getElementById('staff-modal').close()">✕</button>
+    </div>
+    <form method="post" class="dialog-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="form_type" value="new_staff">
+      <div class="form-field">
+        <label>Full Name *</label>
+        <input type="text" name="name" required placeholder="e.g. David Miller">
+      </div>
+      <div class="form-field">
+        <label>Role / Position *</label>
+        <select name="role" required>
+          <option value="Head Chef">Head Chef</option>
+          <option value="Chef">Chef</option>
+          <option value="Cooker">Cooker</option>
+          <option value="Server">Server / Waiter</option>
+          <option value="Lead Operations">Lead Operations</option>
+          <option value="Sales Manager">Sales Manager</option>
+          <option value="Hostess">Hostess</option>
+          <option value="Delivery Associate">Delivery Associate</option>
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Phone Number</label>
+        <input type="text" name="phone" placeholder="415-555-0210">
+      </div>
+      <div class="form-field">
+        <label>Monthly Salary ($)</label>
+        <input type="number" step="50" name="salary" value="3000">
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn secondary" onclick="document.getElementById('staff-modal').close()">Cancel</button>
+        <button type="submit" class="btn">Create Staff Profile</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+
+<!-- MODAL: SUBMIT LEAVE -->
+<dialog id="leave-modal" class="restroiq-dialog">
+  <div class="dialog-box">
+    <div class="dialog-head">
+      <h3>Submit Staff Leave Application</h3>
+      <button onclick="document.getElementById('leave-modal').close()">✕</button>
+    </div>
+    <form method="post" class="dialog-form">
+      <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
+      <input type="hidden" name="form_type" value="new_leave">
+      <div class="form-field">
+        <label>Staff Member *</label>
+        <select name="staff_id" required>
+          {% for s in all_staff %}
+          <option value="{{ s.id }}">{{ s.name }} ({{ s.role }})</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="form-field">
+        <label>Leave Type *</label>
+        <select name="leave_type" required>
+          <option value="Medical Leave">Medical Leave</option>
+          <option value="Casual Leave">Casual Leave</option>
+          <option value="Emergency Leave">Emergency Leave</option>
+          <option value="Annual Vacation">Annual Vacation</option>
+        </select>
+      </div>
+      <div class="form-row" style="display:flex; gap:10px;">
+        <div class="form-field" style="flex:1;">
+          <label>Start Date *</label>
+          <input type="date" name="start_date" required>
+        </div>
+        <div class="form-field" style="flex:1;">
+          <label>End Date *</label>
+          <input type="date" name="end_date" required>
+        </div>
+      </div>
+      <div class="form-field">
+        <label>Reason for Leave *</label>
+        <textarea name="reason" rows="3" required placeholder="Specify medical reason, family event, or emergency..."></textarea>
+      </div>
+      <div class="dialog-actions">
+        <button type="button" class="btn secondary" onclick="document.getElementById('leave-modal').close()">Cancel</button>
+        <button type="submit" class="btn">Submit for Manager Approval</button>
+      </div>
+    </form>
+  </div>
+</dialog>
+{% endblock %}

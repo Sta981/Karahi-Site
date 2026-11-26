@@ -1,30 +1,322 @@
-{% extends "base.html" %}
-{% from "partials/_macros.html" import csrf %}
-{% block title %}Admin{% endblock %}
+{% extends 'admin/base.html' %}
+{% block title %}Dashboard Overview{% endblock %}
+{% block page_title %}Overview{% endblock %}
+
 {% block content %}
-<h1>Admin</h1>
-<div class="stats">
-  <p><strong>{{ stats.orders }}</strong> orders</p>
-  <p><strong>${{ '%.2f'|format(stats.revenue) }}</strong> revenue</p>
-  <p><strong>{{ stats.customers }}</strong> accounts</p>
-  <p><strong>{{ stats.open_messages }}</strong> open messages</p>
+<div class="dashboard-grid">
+
+  <!-- TOP KPI ROW -->
+  <div class="kpi-banner-row">
+    <!-- Today's Revenue -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Today's Revenue</span>
+        <button class="kpi-menu-dots">⋮</button>
+      </div>
+      <div class="kpi-body">
+        <h2 class="kpi-number">${{ '%.0f'|format(stats.today_revenue) }}</h2>
+        <span class="trend-pill trend-up">↑ {{ stats.today_trend }}</span>
+      </div>
+    </div>
+
+    <!-- Total Orders -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Total Orders</span>
+        <button class="kpi-menu-dots">⋮</button>
+      </div>
+      <div class="kpi-body">
+        <h2 class="kpi-number">${{ stats.orders }}</h2>
+        <span class="trend-pill trend-up">↑ {{ stats.orders_trend }}</span>
+      </div>
+    </div>
+
+    <!-- Active Orders -->
+    <div class="kpi-card">
+      <div class="kpi-header">
+        <span class="kpi-title">Active Orders</span>
+        <button class="kpi-menu-dots">⋮</button>
+      </div>
+      <div class="kpi-body">
+        <h2 class="kpi-number">{{ stats.active }}</h2>
+        <span class="trend-pill trend-down">↓ {{ stats.active_trend }}</span>
+      </div>
+    </div>
+
+    <!-- POS Overview Card (Matching Reference Picture) -->
+    <div class="kpi-card pos-card">
+      <div class="kpi-header">
+        <span class="kpi-title">POS Overview</span>
+        <span class="period-select-pill">Monthly ▾</span>
+      </div>
+      <div class="pos-metrics-row">
+        <div class="pos-submetric">
+          <small>Total Bill</small>
+          <strong>{{ pos.total_bills }}</strong>
+        </div>
+        <div class="pos-submetric">
+          <small>AVG Value</small>
+          <strong>${{ '%.0f'|format(pos.avg_value) }}</strong>
+        </div>
+        <div class="pos-submetric">
+          <small>Peak Hour</small>
+          <strong>{{ pos.peak_hour }}</strong>
+        </div>
+      </div>
+
+      <!-- Donut Chart & Payment Summary -->
+      <div class="pos-donut-container">
+        <div class="donut-chart-wrap">
+          <svg viewBox="0 0 36 36" class="circular-chart">
+            <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="circle-card" stroke-dasharray="20, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="circle-online" stroke-dasharray="10, 100" stroke-dashoffset="-20" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+            <path class="circle-primary" stroke-dasharray="70, 100" stroke-dashoffset="-30" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+          </svg>
+          <div class="donut-inner-text">
+            <strong>${{ '%.0f'|format(pos.total_payment) }}</strong>
+            <small>Total Payment</small>
+          </div>
+        </div>
+        <div class="pos-legend">
+          <span><i class="dot dot-card"></i> Card 20%</span>
+          <span><i class="dot dot-online"></i> Online 10%</span>
+        </div>
+      </div>
+      <a href="{{ url_for('admin.orders') }}" class="pos-view-btn">View Details</a>
+    </div>
+  </div>
+
+  <!-- MIDDLE ROW: INCOME CHART & TOP CATEGORIES -->
+  <div class="middle-grid-row">
+    <!-- Average Monthly Income Bar Chart -->
+    <div class="content-card income-card">
+      <div class="card-header-flex">
+        <div>
+          <span class="card-label-sub">Average Monthly Income</span>
+          <div class="income-stat-row">
+            <h2 class="income-figure">$935,577</h2>
+            <span class="income-trend-tag">↑ 76.09 as previous Month</span>
+          </div>
+        </div>
+        <div class="pill-toggle-group">
+          <button class="pill-btn active" type="button">Monthly</button>
+          <button class="pill-btn" type="button">Yearly</button>
+        </div>
+      </div>
+
+      <!-- Animated Bar Chart Component -->
+      <div class="bar-chart-visual">
+        <div class="y-axis-labels">
+          <span>40K</span>
+          <span>30K</span>
+          <span>20K</span>
+          <span>10K</span>
+          <span>0</span>
+        </div>
+        <div class="bars-container">
+          {% for month, amount, h in monthly_bars %}
+          <div class="bar-item {{ 'bar-peak' if month == 'Jun' }}">
+            {% if month == 'Jun' %}
+            <div class="peak-tooltip">39K</div>
+            {% endif %}
+            <div class="bar-track">
+              <div class="bar-fill" style="height: {{ h }}%;"></div>
+            </div>
+            <span class="bar-label">{{ month }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+
+    <!-- Top Categories / Best Sellers with Progress Bars -->
+    <div class="content-card top-cat-card">
+      <div class="card-header-flex">
+        <h3 class="card-section-title">Top Categories</h3>
+        <button class="kpi-menu-dots">⋮</button>
+      </div>
+
+      <div class="top-categories-list">
+        {% for cat in top_categories %}
+        <div class="cat-progress-item">
+          <img class="cat-thumb" src="{{ url_for('static', filename='img/food/' + cat.img) }}" alt="{{ cat.name }}">
+          <div class="cat-info-block">
+            <div class="cat-header-row">
+              <strong>{{ cat.name }}</strong>
+              <span class="cat-pct">{{ cat.pct }}%</span>
+            </div>
+            <div class="cat-meter">
+              <div class="cat-meter-fill" style="width: {{ cat.pct }}%;"></div>
+            </div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <!-- BOTTOM ROW: RECENT ORDERS & STAFF ON DUTY -->
+  <div class="bottom-grid-row">
+    <!-- Recent Orders Table -->
+    <div class="content-card orders-card">
+      <div class="card-header-flex">
+        <h3 class="card-section-title">Recent Orders</h3>
+        <div class="pill-toggle-group">
+          <button class="pill-btn active" type="button">Daily</button>
+          <button class="pill-btn" type="button">Weekly</button>
+          <button class="pill-btn" type="button">Monthly</button>
+        </div>
+      </div>
+
+      <div class="table-responsive">
+        <table class="restroiq-table">
+          <thead>
+            <tr>
+              <th>ORDER ID</th>
+              <th>ORDER NAME</th>
+              <th>TIME</th>
+              <th>AMOUNT</th>
+              <th>STATUS</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for o in recent %}
+            <tr>
+              <td><span class="order-id-chip">#{{ '%02d'|format(o.id) }}</span></td>
+              <td>
+                <strong>{{ o.items[0].name if o.items else 'Karahi Feast' }}</strong>
+                {% if o.items|length > 1 %}
+                <small class="muted-more">+{{ o.items|length - 1 }} more</small>
+                {% endif %}
+              </td>
+              <td>{{ o.created_at.strftime('%I.%M %p') }}</td>
+              <td><strong>${{ '%.2f'|format(o.total) }}</strong></td>
+              <td>
+                <span class="status-badge status-{{ o.status }}">
+                  {{ o.status|title }}
+                </span>
+              </td>
+            </tr>
+            {% else %}
+            <!-- Fallback Mock Rows matching reference photo -->
+            <tr>
+              <td><span class="order-id-chip">01</span></td>
+              <td><strong>Beef Burger</strong></td>
+              <td>2.07 PM</td>
+              <td><strong>$97.96</strong></td>
+              <td><span class="status-badge status-preparing">Active</span></td>
+            </tr>
+            <tr>
+              <td><span class="order-id-chip">02</span></td>
+              <td><strong>Caesar Salad</strong></td>
+              <td>12.44 PM</td>
+              <td><strong>$76.56</strong></td>
+              <td><span class="status-badge status-completed">Completed</span></td>
+            </tr>
+            <tr>
+              <td><span class="order-id-chip">03</span></td>
+              <td><strong>Margherita Pizza</strong></td>
+              <td>12.24 PM</td>
+              <td><strong>$98.87</strong></td>
+              <td><span class="status-badge status-preparing">Active</span></td>
+            </tr>
+            <tr>
+              <td><span class="order-id-chip">04</span></td>
+              <td><strong>Grilled Salmon</strong></td>
+              <td>11.00 AM</td>
+              <td><strong>$87.38</strong></td>
+              <td><span class="status-badge status-cancelled">Cancelled</span></td>
+            </tr>
+            <tr>
+              <td><span class="order-id-chip">05</span></td>
+              <td><strong>Chicken Wings</strong></td>
+              <td>9.00 AM</td>
+              <td><strong>$97.56</strong></td>
+              <td><span class="status-badge status-completed">Completed</span></td>
+            </tr>
+            <tr>
+              <td><span class="order-id-chip">06</span></td>
+              <td><strong>French Fries</strong></td>
+              <td>8.00 AM</td>
+              <td><strong>$36.00</strong></td>
+              <td><span class="status-badge status-completed">Completed</span></td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Staff On Duty Widget (Exact match to reference photo!) -->
+    <div class="content-card staff-duty-card">
+      <div class="card-header-flex">
+        <h3 class="card-section-title">Staff On Duty</h3>
+        <a href="{{ url_for('admin.staff') }}" class="view-all-link">Manage →</a>
+      </div>
+
+      <div class="staff-duty-list">
+        {% for s in staff_on_duty %}
+        <div class="staff-duty-item">
+          <div class="staff-avatar-wrap">
+            <img class="staff-avatar" src="https://images.unsplash.com/photo-{{ loop.cycle('1507003211169-0a1dd7228f2d', '1500648767791-00dcc994a43e', '1492562080023-ab3db95bfbce', '1534528741775-53994a69daeb', '1522075469751-3a6694fb2f61') }}?auto=format&fit=crop&w=100&q=80" alt="{{ s.name }}">
+            <span class="online-indicator"></span>
+          </div>
+          <div class="staff-meta">
+            <strong>{{ s.name }}</strong>
+            <small>{{ s.role }}</small>
+          </div>
+          <div class="staff-hours">
+            <strong>{{ '%.0f'|format(s.shift_hours_done) }}/{{ '%.0f'|format(s.shift_hours_total) }}</strong>
+          </div>
+        </div>
+        {% else %}
+        <!-- Default Roster matching photo -->
+        <div class="staff-duty-item">
+          <img class="staff-avatar" src="https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?auto=format&fit=crop&w=100&q=80" alt="Albert">
+          <div class="staff-meta">
+            <strong>Albert Flores</strong>
+            <small>Lead Operations</small>
+          </div>
+          <div class="staff-hours"><strong>9/10</strong></div>
+        </div>
+        <div class="staff-duty-item">
+          <img class="staff-avatar" src="https://images.unsplash.com/photo-1500648767791-00dcc994a43e?auto=format&fit=crop&w=100&q=80" alt="Guy">
+          <div class="staff-meta">
+            <strong>Guy Hawkins</strong>
+            <small>Cooker</small>
+          </div>
+          <div class="staff-hours"><strong>6/10</strong></div>
+        </div>
+        <div class="staff-duty-item">
+          <img class="staff-avatar" src="https://images.unsplash.com/photo-1492562080023-ab3db95bfbce?auto=format&fit=crop&w=100&q=80" alt="Ronald">
+          <div class="staff-meta">
+            <strong>Ronald Richards</strong>
+            <small>Sales Manager</small>
+          </div>
+          <div class="staff-hours"><strong>7/10</strong></div>
+        </div>
+        <div class="staff-duty-item">
+          <img class="staff-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=100&q=80" alt="David">
+          <div class="staff-meta">
+            <strong>David Miller</strong>
+            <small>Chef</small>
+          </div>
+          <div class="staff-hours"><strong>4/10</strong></div>
+        </div>
+        <div class="staff-duty-item">
+          <img class="staff-avatar" src="https://images.unsplash.com/photo-1522075469751-3a6694fb2f61?auto=format&fit=crop&w=100&q=80" alt="Michael">
+          <div class="staff-meta">
+            <strong>Michael Brown</strong>
+            <small>Server</small>
+          </div>
+          <div class="staff-hours"><strong>2/10</strong></div>
+        </div>
+        {% endfor %}
+      </div>
+      <a href="{{ url_for('admin.staff') }}" class="staff-hub-btn">Staff Hub & Leave Approval →</a>
+    </div>
+  </div>
+
 </div>
-
-<h2>Recent orders</h2>
-<table class="table">
-  <thead><tr><th>Order</th><th>Customer</th><th>Total</th><th>Status</th></tr></thead>
-  <tbody>
-  {% for o in recent %}
-  <tr><td><a href="{{ url_for('shop.order_detail', order_id=o.id) }}">#{{ o.id }}</a></td><td>{{ o.customer_name }}</td><td>${{ '%.2f'|format(o.total) }}</td>
-    <td><form method="post" action="{{ url_for('admin.order_status', order_id=o.id) }}" class="row">{{ csrf() }}
-      <select name="status" aria-label="Status for order {{ o.id }}">{% for s in statuses %}<option value="{{ s }}" {{ 'selected' if s == o.status }}>{{ s.replace('_', ' ') }}</option>{% endfor %}</select>
-      <button class="btn small ghost">Set</button></form></td></tr>
-  {% else %}<tr><td colspan="4" class="muted">No orders yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
-
-<h2>All tables ({{ tables|length }})</h2>
-<ul class="table-grid">
-  {% for name, n in tables %}<li><a href="{{ url_for('admin.list_rows', table=name) }}">{{ name }}</a> <span class="muted">{{ n }}</span></li>{% endfor %}
-</ul>
 {% endblock %}

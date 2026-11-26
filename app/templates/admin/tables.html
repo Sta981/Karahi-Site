@@ -1,0 +1,74 @@
+{% extends 'admin/base.html' %}
+{% block title %}Dining Room & Table Bookings{% endblock %}
+{% block page_title %}Table Reservations & Floorplan{% endblock %}
+
+{% block content %}
+<div class="content-card" style="margin-bottom:20px;">
+  <div class="card-header-flex">
+    <div>
+      <span class="card-label-sub">DINING ROOM CAPACITY</span>
+      <h2 style="font-size:20px; font-weight:700; margin-top:4px;">Dining Tables & Reservation Schedule</h2>
+      <p class="muted">Monitor dining hall capacity, table covers, and upcoming customer reservations.</p>
+    </div>
+    <a class="btn" href="{{ url_for('admin.create_row', table='reservations') }}">+ New Booking</a>
+  </div>
+</div>
+
+<!-- Table Floorplan Cards -->
+<div class="table-floorplan-grid">
+  {% for t in tables %}
+  <div class="floorplan-card">
+    <div class="table-icon-mark">▦</div>
+    <h3>{{ t.label }}</h3>
+    <span class="seat-capacity-pill">{{ t.seats }} Seats</span>
+    <div class="table-status-indicator">
+      <span class="online-indicator"></span> Ready for guests
+    </div>
+    <a href="{{ url_for('admin.edit_row', table='dining_tables', id=t.id) }}" class="edit-table-link">Edit Table Specs</a>
+  </div>
+  {% else %}
+  <p class="empty">No dining tables configured.</p>
+  {% endfor %}
+</div>
+
+<!-- Upcoming Reservations Table -->
+<div class="content-card" style="margin-top:24px;">
+  <div class="card-header-flex">
+    <h3 class="card-section-title">Upcoming Guest Bookings</h3>
+    <a href="{{ url_for('admin.list_rows', table='reservations') }}" class="view-all-link">Full Reservation Table →</a>
+  </div>
+
+  <div class="table-responsive">
+    <table class="restroiq-table">
+      <thead>
+        <tr>
+          <th>GUEST NAME</th>
+          <th>PHONE</th>
+          <th>TABLE</th>
+          <th>PARTY SIZE</th>
+          <th>RESERVATION DATE & TIME</th>
+          <th>ACTION</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for r in reservations %}
+        <tr>
+          <td><strong>{{ r.guest_name }}</strong></td>
+          <td>{{ r.guest_phone }}</td>
+          <td><span class="table-label-tag">{{ r.table.label if r.table else 'Unassigned' }}</span></td>
+          <td><strong>{{ r.party_size }} Guests</strong></td>
+          <td>{{ r.reserved_for.strftime('%a, %b %d at %I:%M %p') }}</td>
+          <td>
+            <a href="{{ url_for('admin.edit_row', table='reservations', id=r.id) }}" class="link">Edit Booking</a>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="6" class="empty">No upcoming reservations logged yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,62 @@
+{% extends 'admin/base.html' %}
+{% from 'partials/_macros.html' import csrf %}
+{% block title %}Kitchen Display Board{% endblock %}
+{% block page_title %}Kitchen Display System (KDS){% endblock %}
+
+{% block content %}
+<div class="content-card" style="margin-bottom:20px;">
+  <div class="card-header-flex">
+    <div>
+      <span class="card-label-sub">LIVE PRODUCTION TICKETS</span>
+      <h2 style="font-size:20px; font-weight:700; margin-top:4px;">Kitchen Workstation & Ticket Flow</h2>
+      <p class="muted">Chefs and line cooks update orders in real-time as preparation progresses.</p>
+    </div>
+    <a class="btn secondary" href="{{ url_for('admin.kitchen') }}">Refresh Tickets ↻</a>
+  </div>
+</div>
+
+<div class="kanban-board">
+  {% for status, orders in stages %}
+  <div class="kanban-lane">
+    <div class="kanban-lane-header">
+      <h3>{{ status|replace('_',' ')|title }}</h3>
+      <span class="chip">{{ orders|length }} Tickets</span>
+    </div>
+
+    <div class="kanban-tickets-list">
+      {% for o in orders %}
+      <div class="kds-ticket">
+        <div class="kds-ticket-head">
+          <span class="kds-ticket-id">#{{ o.id }}</span>
+          <span class="status-badge status-{{ status }}">{{ o.order_type|upper }}</span>
+        </div>
+        <div class="kds-ticket-customer">
+          <strong>{{ o.customer_name }}</strong> · {{ o.created_at.strftime('%I:%M %p') }}
+        </div>
+        <ul class="kds-items-list">
+          {% for item in o.items %}
+          <li>
+            <span class="kds-qty">{{ item.quantity }}×</span>
+            <span class="kds-item-name">{{ item.name }}</span>
+            {% for m in item.modifiers %}
+            <small class="kds-mod">+ {{ m.name }}</small>
+            {% endfor %}
+          </li>
+          {% endfor %}
+        </ul>
+        <form method="post" action="{{ url_for('admin.order_status', order_id=o.id) }}" class="kds-action-form">
+          {{ csrf() }}
+          <input type="hidden" name="status" value="{{ 'preparing' if status=='placed' else 'ready' if status=='preparing' else 'completed' }}">
+          <button type="submit" class="btn small" style="width:100%;">
+            {{ 'Start Preparing ♨' if status=='placed' else 'Mark as Ready ✓' if status=='preparing' else 'Complete Order ★' }}
+          </button>
+        </form>
+      </div>
+      {% else %}
+      <div class="kds-empty-lane">No orders in {{ status|title }} lane.</div>
+      {% endfor %}
+    </div>
+  </div>
+  {% endfor %}
+</div>
+{% endblock %}

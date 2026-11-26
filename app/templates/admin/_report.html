@@ -1,0 +1,84 @@
+{% macro report(stats) %}
+<div class="kpi-banner-row" style="margin-bottom:20px;">
+  <div class="kpi-card">
+    <span class="kpi-title">Completed Sales</span>
+    <h2 class="kpi-number">${{ '%.2f'|format(stats.revenue) }}</h2>
+    <small>{{ stats.completed }} Completed Orders · {{ stats.days }} Days</small>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-title">Total Processed Orders</span>
+    <h2 class="kpi-number">{{ stats.orders }}</h2>
+    <small>Across all channels</small>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-title">Active In-Kitchen Queue</span>
+    <h2 class="kpi-number" style="color:#d76248;">{{ stats.active }}</h2>
+    <small>Live preparation tickets</small>
+  </div>
+  <div class="kpi-card">
+    <span class="kpi-title">Average Order Value</span>
+    <h2 class="kpi-number">${{ '%.2f'|format(stats.average) }}</h2>
+    <small>Per completed transaction</small>
+  </div>
+</div>
+
+<div class="middle-grid-row" style="margin-bottom:20px;">
+  <div class="content-card income-card">
+    <div class="card-header-flex">
+      <div>
+        <h3 class="card-section-title">Daily Sales Performance</h3>
+        <p class="muted">Completed order revenue per day in USD</p>
+      </div>
+      <span class="chip">{{ stats.days }} Day Window</span>
+    </div>
+    <div class="bar-chart-visual">
+      <div class="bars-container" style="height:180px;">
+        {% for day, amount, height in stats.bars %}
+        <div class="bar-item" title="{{ day }}: ${{ '%.2f'|format(amount) }}">
+          <div class="bar-track">
+            <div class="bar-fill" style="height:{{ height }}%;"></div>
+          </div>
+          <span class="bar-label">{{ day }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    </div>
+  </div>
+
+  <div class="content-card top-cat-card">
+    <div class="card-header-flex">
+      <h3 class="card-section-title">Top Bestselling Dishes</h3>
+      <span class="chip">Units Sold</span>
+    </div>
+    <div class="top-categories-list">
+      {% for name, n in stats.popular %}
+      <div class="cat-progress-item">
+        <div class="cat-info-block" style="width:100%;">
+          <div class="cat-header-row">
+            <strong>#{{ loop.index }} {{ name }}</strong>
+            <span class="cat-pct">{{ n }} sold</span>
+          </div>
+          <div class="cat-meter">
+            <div class="cat-meter-fill" style="width:{{ [n * 12, 100]|min }}%;"></div>
+          </div>
+        </div>
+      </div>
+      {% else %}
+      <div class="empty">Complete an order to see best sellers.</div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endmacro %}
+
+{% macro period(stats) %}
+<form method="get" class="filter-form" style="display:flex; align-items:center; gap:8px;">
+  <label for="days" style="font-size:12px; font-weight:600;">Date Range:</label>
+  <select id="days" name="days" class="filter-dropdown" style="padding:6px 10px;">
+    {% for d in (7, 14, 30) %}
+    <option value="{{ d }}" {{ 'selected' if d == stats.days }}>Last {{ d }} Days</option>
+    {% endfor %}
+  </select>
+  <button class="btn small" type="submit">Apply Filter</button>
+</form>
+{% endmacro %}

@@ -1,6 +1,6 @@
 """Demo data. Menu items are representative Pakistani karahi-house dishes,
 the live store page loads its menu with JavaScript so prices here are placeholders."""
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from werkzeug.security import generate_password_hash
 
@@ -8,8 +8,9 @@ from .extensions import db
 from .models import (Address, Allergen, Category, Combo, ComboItem, Coupon, DeliveryDriver,
                      DeliveryZone, DiningTable, Holiday, Ingredient, ItemImage, LoyaltyAccount,
                      MenuItem, ModifierGroup, ModifierOption, NutritionInfo, OpeningHours,
-                     PaymentMethod, Promotion, PromotionItem, Review, Role, StoreInfo, Supplier,
-                     Tag, User)
+                     Order, OrderItem, OrderStatusHistory, Payment,
+                     PaymentMethod, Promotion, PromotionItem, Review, Role, StaffLeave,
+                     StaffMember, StaffPayroll, StoreInfo, Supplier, Tag, User)
 
 MENU = {
     "Starters": [
@@ -148,4 +149,72 @@ def seed_if_empty():
     for n, rating, text in [("Chicken Karahi", 5, "Proper dhaba flavor. Order it hot."),
                             ("Chicken Biryani", 4, "Generous portion, good raita.")]:
         db.session.add(Review(user_id=diner.id, item_id=items[n].id, rating=rating, comment=text))
+
+    # ---------- Staff & HR (RestroIQ) ----------
+    staff_roster = [
+        ("Albert Flores", "Lead Operations", "415-555-0201", "albert@restroiq.test", 4500.0, "On Duty", 9.0, 10.0),
+        ("Guy Hawkins", "Cooker", "415-555-0202", "guy@restroiq.test", 2800.0, "On Duty", 6.0, 10.0),
+        ("Ronald Richards", "Sales Manager", "415-555-0203", "ronald@restroiq.test", 3800.0, "On Duty", 7.0, 10.0),
+        ("David Miller", "Chef", "415-555-0204", "david@restroiq.test", 3500.0, "On Duty", 4.0, 10.0),
+        ("Michael Brown", "Server", "415-555-0205", "michael@restroiq.test", 2200.0, "On Duty", 2.0, 10.0),
+        ("Ayesha Noor", "Hostess", "415-555-0206", "ayesha.n@restroiq.test", 2400.0, "Off Duty", 0.0, 8.0)
+    ]
+    created_staff = []
+    for name, role, phone, email, salary, status, h_done, h_tot in staff_roster:
+        s = StaffMember(name=name, role=role, phone=phone, email=email,
+                        salary_monthly=salary, shift_status=status,
+                        shift_hours_done=h_done, shift_hours_total=h_tot,
+                        joined_date=date.today() - timedelta(days=180))
+        db.session.add(s)
+        created_staff.append(s)
+    db.session.flush()
+
+    # Leaves
+    db.session.add(StaffLeave(staff_id=created_staff[3].id, leave_type="Medical Leave",
+                              start_date=date.today() + timedelta(days=2),
+                              end_date=date.today() + timedelta(days=4),
+                              reason="Severe flu and medical rest recommended.", status="Pending"))
+    db.session.add(StaffLeave(staff_id=created_staff[4].id, leave_type="Casual Leave",
+                              start_date=date.today() - timedelta(days=10),
+                              end_date=date.today() - timedelta(days=8),
+                              reason="Family wedding in hometown.", status="Approved"))
+    db.session.add(StaffLeave(staff_id=created_staff[1].id, leave_type="Emergency Leave",
+                              start_date=date.today() + timedelta(days=5),
+                              end_date=date.today() + timedelta(days=6),
+                              reason="Personal household emergency.", status="Pending"))
+
+    # Payroll Records
+    for sm in created_staff:
+        db.session.add(StaffPayroll(staff_id=sm.id, month=date.today().strftime("%B"),
+                                    year=date.today().year, base_salary=sm.salary_monthly,
+                                    bonus=150.0 if "Manager" in sm.role or "Chef" in sm.role else 50.0,
+                                    deductions=0.0, net_salary=sm.salary_monthly + (150.0 if "Manager" in sm.role or "Chef" in sm.role else 50.0),
+                                    payment_status="Paid"))
+
+    # Sample Demonstration Orders for RestroIQ Analytics & POS
+    pay_card = PaymentMethod.query.filter_by(name="Credit / debit card").first()
+    demo_orders_spec = [
+        ("Ayesha Khan", "415-555-0142", "completed", [("Chicken Karahi", 2), ("Garlic Naan", 3)], 48.97, pay_card, timedelta(hours=2)),
+        ("Bilal Tariq", "415-555-0188", "completed", [("Lamb Karahi", 1), ("Plain Naan", 2), ("Mango Lassi", 2)], 39.97, pay_card, timedelta(hours=4)),
+        ("Sarah Jenkins", "415-555-0199", "preparing", [("Butter Chicken", 2), ("Steamed Basmati", 2)], 43.00, pay_card, timedelta(minutes=45)),
+        ("Hamza Ali", "415-555-0177", "placed", [("Seekh Kebab", 2), ("Tandoori Roti", 4)], 37.94, pay_card, timedelta(minutes=15)),
+        ("Zainab Bibi", "415-555-0166", "ready", [("Chicken Biryani", 3)], 50.97, pay_card, timedelta(minutes=30)),
+    ]
+    for c_name, c_phone, o_status, lines, total, p_method, offset in demo_orders_spec:
+        o = Order(user_id=diner.id if "Ayesha" in c_name else None,
+                  order_type="pickup", status=o_status,
+                  customer_name=c_name, customer_phone=c_phone,
+                  subtotal=total, discount=0.0, delivery_fee=0.0, total=total)
+        o.created_at = datetime.now(timezone.utc) - offset
+        for item_name, qty in lines:
+            if item_name in items:
+                it = items[item_name]
+                o.items.append(OrderItem(item_id=it.id, name=it.name, unit_price=it.price, quantity=qty))
+        o.history.append(OrderStatusHistory(status="placed"))
+        if o_status != "placed":
+            o.history.append(OrderStatusHistory(status=o_status))
+        if p_method:
+            o.payment = Payment(method=p_method, amount=total, status="paid")
+        db.session.add(o)
+
     db.session.commit()

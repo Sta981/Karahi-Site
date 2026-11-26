@@ -69,7 +69,7 @@ def test_cart_checkout_flow(client):
                                         "coupon": "WELCOME10", "_csrf": t})
     assert ok.status_code == 302
     with client.app.app_context():
-        order = Order.query.one()
+        order = Order.query.order_by(Order.id.desc()).first()
         assert order.discount > 0 and order.total == round(order.subtotal - order.discount, 2)
 
 
@@ -128,3 +128,50 @@ def test_admin_edit_pages_render_including_composite_keys(client):
     assert client.get("/admin/t/item_tags/edit?item_id=1&tag_id=1").status_code in (200, 404)
     page = client.get("/admin/t/item_tags").get_data(as_text=True)
     assert "Edit" in page
+
+
+def test_restroiq_admin_dashboard(client):
+    login(client, "admin@karahihouse.test", "Admin12345")
+    res = client.get("/admin/")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+    assert "Restroq" in html or "RestroIQ" in html
+    assert "Staff On Duty" in html
+    assert "POS Overview" in html
+    assert "Average Monthly Income" in html
+
+
+def test_restroiq_staff_and_leaves(client):
+    login(client, "admin@karahihouse.test", "Admin12345")
+    res = client.get("/admin/staff")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+    assert "Staff Roster" in html or "Leave Management" in html
+    
+    # Test leave approval
+    t = token(client, "/admin/staff")
+    res = client.post("/admin/staff/leave/1/approve", data={"_csrf": t}, follow_redirects=True)
+    assert res.status_code == 200
+    with client.app.app_context():
+        from app.models import StaffLeave
+        leave = db.session.get(StaffLeave, 1)
+        assert leave.status == "Approved"
+
+
+def test_restroiq_kds_orders_analytics(client):
+    login(client, "admin@karahihouse.test", "Admin12345")
+    assert client.get("/admin/kitchen").status_code == 200
+    assert client.get("/admin/orders").status_code == 200
+    assert client.get("/admin/tables").status_code == 200
+    assert client.get("/admin/analytics").status_code == 200
+    assert client.get("/admin/directory").status_code == 200
+
+
+def test_customer_home_luxury_showcase(client):
+    res = client.get("/")
+    assert res.status_code == 200
+    html = res.get_data(as_text=True)
+    assert "Real fire" in html
+    assert "Chicken Karahi" in html
+    assert "RestroIQ" in html
+

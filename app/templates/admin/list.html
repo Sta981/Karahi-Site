@@ -1,33 +1,89 @@
-{% extends "base.html" %}
+{% extends "admin/base.html" %}
 {% from "partials/_macros.html" import csrf %}
-{% block title %}{{ table }}{% endblock %}
+{% block title %}{{ admin_labels.get(table, table|replace('_',' ')|title) }}{% endblock %}
+{% block page_title %}{{ admin_labels.get(table, table|replace('_',' ')|title) }}{% endblock %}
+
 {% block content %}
-<p><a href="{{ url_for('admin.dashboard') }}">&larr; Admin</a></p>
-<h1>{{ table }}</h1>
-<p><a class="btn small" href="{{ url_for('admin.create_row', table=table) }}">New record</a></p>
-<div class="scroll">
-<table class="table">
-  <thead><tr>{% for c in cols %}<th>{{ c }}</th>{% endfor %}<th></th></tr></thead>
-  <tbody>
-  {% for row in pagination.items %}
-  {% set key = {} %}{% for k in pk_names %}{% set _ = key.update({k: row|attr(k)}) %}{% endfor %}
-  <tr>
-    {% for c in cols %}<td>{{ row|attr(c) }}</td>{% endfor %}
-    <td class="nowrap">
-      <a href="{{ url_for('admin.edit_row', table=table, **key) }}">Edit</a>
-      <form method="post" action="{{ url_for('admin.delete_row', table=table) }}" class="inline" data-confirm="Delete this record?">
-        {{ csrf() }}{% for k, v in key.items() %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
-        <button class="link danger">Delete</button>
-      </form>
-    </td>
-  </tr>
-  {% else %}<tr><td colspan="{{ cols|length + 1 }}" class="muted">No records yet.</td></tr>{% endfor %}
-  </tbody>
-</table>
+<div class="content-card" style="margin-bottom:20px;">
+  <div class="card-header-flex">
+    <div>
+      <span class="card-label-sub">DATABASE TABLE: {{ table|upper }}</span>
+      <h2 style="font-size:20px; font-weight:700; margin-top:4px;">{{ admin_labels.get(table, table|replace('_',' ')|title) }}</h2>
+      <p class="muted">Manage all rows in the <code>{{ table }}</code> model with complete CRUD capabilities.</p>
+    </div>
+    <div style="display:flex; gap:10px;">
+      <a class="btn" href="{{ url_for('admin.create_row', table=table) }}">+ New Record</a>
+      <a class="btn secondary" href="{{ url_for('admin.directory') }}">All 50 Tables</a>
+    </div>
+  </div>
 </div>
-<p class="pager">
-  {% if pagination.has_prev %}<a href="{{ url_for('admin.list_rows', table=table, page=pagination.prev_num) }}">&larr; Newer</a>{% endif %}
-  Page {{ pagination.page }} of {{ pagination.pages or 1 }}
-  {% if pagination.has_next %}<a href="{{ url_for('admin.list_rows', table=table, page=pagination.next_num) }}">Older &rarr;</a>{% endif %}
-</p>
+
+<div class="content-card">
+  <div class="table-responsive">
+    <table class="restroiq-table">
+      <thead>
+        <tr>
+          {% for c in cols %}
+          <th>{{ c|replace('_',' ')|upper }}</th>
+          {% endfor %}
+          <th style="text-align:right;">ACTIONS</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in pagination.items %}
+        {% set key = {} %}
+        {% for k in pk_names %}
+          {% set _ = key.update({k: row|attr(k)}) %}
+        {% endfor %}
+        <tr>
+          {% for c in cols %}
+          <td>
+            {% set val = row|attr(c) %}
+            {% if val is none %}
+              <span class="muted">—</span>
+            {% elif val is boolean %}
+              <span class="status-badge {{ 'status-completed' if val else 'status-cancelled' }}">
+                {{ 'Yes' if val else 'No' }}
+              </span>
+            {% else %}
+              {{ val }}
+            {% endif %}
+          </td>
+          {% endfor %}
+          <td style="text-align:right; white-space:nowrap;">
+            <a href="{{ url_for('admin.edit_row', table=table, **key) }}" class="btn secondary small" style="margin-right:6px;">Edit</a>
+            <form method="post" action="{{ url_for('admin.delete_row', table=table) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this record?');">
+              {{ csrf() }}
+              {% for k, v in key.items() %}
+              <input type="hidden" name="{{ k }}" value="{{ v }}">
+              {% endfor %}
+              <button type="submit" class="btn small" style="background:#d4534b; border-color:#d4534b; color:#fff;">Delete</button>
+            </form>
+          </td>
+        </tr>
+        {% else %}
+        <tr>
+          <td colspan="{{ cols|length + 1 }}" class="empty">No records exist in {{ table }} yet.</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <div class="pager" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('admin.list_rows', table=table, page=pagination.prev_num) }}" class="btn secondary small">← Previous</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+
+    <span class="muted">Page {{ pagination.page }} of {{ pagination.pages or 1 }}</span>
+
+    {% if pagination.has_next %}
+    <a href="{{ url_for('admin.list_rows', table=table, page=pagination.next_num) }}" class="btn secondary small">Next →</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+  </div>
+</div>
 {% endblock %}

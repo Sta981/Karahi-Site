@@ -1,0 +1,50 @@
+{% extends 'admin/base.html' %}
+{% block title %}Order Workspace{% endblock %}
+{% block page_title %}POS & Orders Workspace{% endblock %}
+
+{% block content %}
+<div class="content-card" style="margin-bottom:20px;">
+  <div class="card-header-flex">
+    <div>
+      <span class="card-label-sub">REAL-TIME TRANSACTIONS</span>
+      <h2 style="font-size:20px; font-weight:700; margin-top:4px;">Order Processing & Dispatch Console</h2>
+      <p class="muted">Search customer orders, filter fulfillment channels, update kitchen status, and export reports.</p>
+    </div>
+    <a class="btn secondary" href="{{ url_for('admin.export_orders') }}">Export Orders CSV ⤓</a>
+  </div>
+
+  <form class="order-filter-bar" method="get" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:16px;">
+    <input name="q" value="{{ q }}" placeholder="Search customer name or phone..." class="search-filter-input" style="flex:1; min-width:220px;">
+    <select name="status" class="filter-dropdown">
+      <option value="">All Statuses</option>
+      {% for s in statuses %}
+      <option value="{{ s }}" {{ 'selected' if selected == s }}>{{ s|replace('_',' ')|title }}</option>
+      {% endfor %}
+    </select>
+    <button class="btn" type="submit">Filter Orders</button>
+    {% if q or selected %}
+    <a href="{{ url_for('admin.orders') }}" class="btn secondary">Clear</a>
+    {% endif %}
+  </form>
+</div>
+
+<div class="content-card">
+  {% include 'admin/_orders.html' %}
+
+  <div class="pager" style="display:flex; justify-content:space-between; align-items:center; margin-top:20px;">
+    {% if pagination.has_prev %}
+    <a href="{{ url_for('admin.orders', page=pagination.prev_num, q=q, status=selected) }}" class="btn secondary small">← Previous</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+
+    <span class="muted">Page {{ pagination.page }} of {{ pagination.pages or 1 }}</span>
+
+    {% if pagination.has_next %}
+    <a href="{{ url_for('admin.orders', page=pagination.next_num, q=q, status=selected) }}" class="btn secondary small">Next →</a>
+    {% else %}
+    <span></span>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}

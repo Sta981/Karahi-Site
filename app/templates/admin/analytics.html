@@ -1,0 +1,29 @@
+{% extends 'admin/base.html' %}
+{% from 'admin/_report.html' import report, period %}
+{% block title %}Sales & Financial Intelligence{% endblock %}
+{% block page_title %}Sales & Revenue Analytics{% endblock %}
+
+{% block content %}
+<div class="content-card" style="margin-bottom:20px;">
+  <div class="card-header-flex">
+    <div>
+      <span class="card-label-sub">BUSINESS INTELLIGENCE & FINANCIALS</span>
+      <h2 style="font-size:20px; font-weight:700; margin-top:4px;">Revenue Intelligence & Sales Velocity</h2>
+      <p class="muted">Monitor completed transactions, average ticket values, channel breakdown, and menu item performance.</p>
+    </div>
+    {{ period(stats) }}
+  </div>
+</div>
+
+{{ report(stats) }}
+
+<div class="content-card">
+  <div class="card-header-flex">
+    <div>
+      <h3 class="card-section-title">Raw Financial Ledger & Order Data</h3>
+      <p class="muted">Export complete timestamped order records and billing line items for audit and bookkeeping.</p>
+    </div>
+    <a class="btn" href="{{ url_for('admin.export_orders') }}">Download Master CSV ⤓</a>
+  </div>
+</div>
+{% endblock %}

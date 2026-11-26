@@ -1,0 +1,26 @@
+{% extends 'admin/base.html' %}
+{% block title %}Master Data Directory{% endblock %}
+{% block page_title %}Master Schema Directory (50 Tables){% endblock %}
+
+{% block content %}
+<div class="content-card" style="margin-bottom:20px;">
+  <div class="card-header-flex">
+    <div>
+      <span class="card-label-sub">RELATIONAL DATABASE SCHEMA</span>
+      <h2 style="font-size:20px; font-weight:700; margin-top:4px;">Master Data Directory & Entity Explorer</h2>
+      <p class="muted">Explore and manage all 50 interconnected relational models with complete CRUD operations.</p>
+    </div>
+  </div>
+</div>
+
+<div class="directory-grid">
+  {% for name, n in tables %}
+  <a class="directory-card" href="{{ url_for('admin.list_rows', table=name) }}">
+    <div class="dir-icon">🗄️</div>
+    <strong>{{ admin_labels.get(name, name|replace('_',' ')|title) }}</strong>
+    <span class="table-name-code">table: {{ name }}</span>
+    <span class="record-badge">{{ n }} Records →</span>
+  </a>
+  {% endfor %}
+</div>
+{% endblock %}

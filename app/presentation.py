@@ -35,8 +35,7 @@ SEEDED_ILLUSTRATIONS = {
 
 
 def menu_image(item):
-    image = item.images[0] if item.images else None
-    # Replace the seeded SVG illustrations at display time; keep custom photos.
-    if image and image.url and image.url not in SEEDED_ILLUSTRATIONS:
-        return image.url
+    for image in reversed(item.images or []):
+        if image and image.url and image.url not in SEEDED_ILLUSTRATIONS:
+            return image.url
     return "/static/img/food/" + FOOD_IMAGES.get(item.name, "banner.png")

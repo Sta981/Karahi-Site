@@ -1,0 +1,61 @@
+{% from 'partials/_macros.html' import csrf %}
+<div class="table-responsive">
+  <table class="restroiq-table">
+    <thead>
+      <tr>
+        <th>ORDER ID</th>
+        <th>CUSTOMER</th>
+        <th>CHANNEL</th>
+        <th>ITEMS SUMMARY</th>
+        <th>TOTAL</th>
+        <th>STATUS</th>
+        <th>UPDATE WORKFLOW</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for o in recent %}
+      <tr>
+        <td>
+          <a href="{{ url_for('shop.order_detail', order_id=o.id) }}" class="order-id-link">
+            <strong>#{{ '%02d'|format(o.id) }}</strong>
+          </a>
+          <small class="muted" style="display:block;">{{ o.created_at.strftime('%d %b, %I:%M %p') }}</small>
+        </td>
+        <td>
+          <strong>{{ o.customer_name }}</strong>
+          <small class="muted" style="display:block;">{{ o.customer_phone }}</small>
+        </td>
+        <td>
+          <span class="channel-pill">{{ o.order_type|upper }}</span>
+        </td>
+        <td style="max-width:240px;">
+          {% for item in o.items %}
+          <span class="item-tag-pill">{{ item.quantity }}× {{ item.name }}</span>
+          {% endfor %}
+        </td>
+        <td><strong>${{ '%.2f'|format(o.total) }}</strong></td>
+        <td>
+          <span class="status-badge status-{{ o.status }}">
+            {{ o.status|title }}
+          </span>
+        </td>
+        <td>
+          <form class="inline-status-form" method="post" action="{{ url_for('admin.order_status', order_id=o.id) }}">
+            {{ csrf() }}
+            <select name="status" class="status-select-sm">
+              {% for s in statuses %}
+              <option value="{{ s }}" {{ 'selected' if s == o.status }}>{{ s|replace('_',' ')|title }}</option>
+              {% endfor %}
+            </select>
+            <button type="submit" class="btn small">Update</button>
+          </form>
+        </td>
+      </tr>
+      {% else %}
+      <tr>
+        <td colspan="7" class="empty">No matching orders found.</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
