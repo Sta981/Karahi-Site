@@ -16,3 +16,7 @@ The manifest records each image's original URL, source page, original label and 
 - [Jinja documentation](https://jinja.palletsprojects.com/)
 - [Flask-SQLAlchemy documentation](https://flask-sqlalchemy.palletsprojects.com/)
 - [SQLAlchemy documentation](https://docs.sqlalchemy.org/)
+
+## Glass storefront update
+- `app/static/img/karahi-dining-hero.webp`: AI-generated illustrative restaurant/food photography, created for the Karahi House homepage. It is not a photograph of an actual venue.
+- `app/static/img/karahi-mark.svg`: original vector flame-and-karahi emblem recreated for the approved glass header design.

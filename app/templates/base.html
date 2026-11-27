@@ -4,43 +4,40 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#f5f3ee">
+  <meta name="theme-color" content="#231e18">
   <title>{% block title %}Karahi House{% endblock %} | Karahi House</title>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
   <link rel="icon" href="{{ url_for('static', filename='img/karahi-mark.svg') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/brand.css') }}">
-  <noscript><style>.nav { display: flex; position: static; width: auto; flex-wrap: wrap; box-shadow: none; }.bar { height: auto; min-height: 64px; flex-wrap: wrap; }.nav-toggle { display: none; }</style></noscript>
+
   <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/glass-header.css') }}">
+  <noscript><style>.premium-site .site-header .bar{height:auto;flex-wrap:wrap;border-radius:24px}.premium-site .site-header .nav{display:flex;position:static;width:100%;flex-wrap:wrap;box-shadow:none;background:none;border:0;order:3}.premium-site .site-header .nav-toggle{display:none}.is-home #main{margin-top:0!important}</style></noscript>
 </head>
-<body class="premium-site">
+<body class="premium-site{% if request.path == url_for('main.home') %} is-home{% endif %}">
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="wrap bar">
-      <button class="nav-toggle" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false">{{ icon('menu', 24) }}</button>
-      <a class="brand" href="{{ url_for('main.home') }}" aria-label="Karahi House home"><img src="{{ url_for('static', filename='img/karahi-mark.svg') }}" alt="" width="44" height="44"><span class="brand-word">Karahi House<small>THE ART OF FIRE</small></span></a>
-      <nav id="site-navigation" class="nav" aria-label="Main">
-        <a href="{{ url_for('main.home') }}">Home</a><a href="{{ url_for('main.menu') }}">Menu</a>
-        <a href="{{ url_for('main.reserve') }}">Reserve a table</a>
-        <a href="{{ url_for('main.about') }}">Visit us</a>
-        <a href="{{ url_for('main.contact') }}">Contact</a>
-        {% if current_user %}<a href="{{ url_for('shop.orders') }}">My orders</a>{% endif %}
-        {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Workspace</a>{% endif %}{% if current_user and staff_profile %}<a href="{{ url_for('auth.staff_inbox') }}">Staff inbox</a>{% endif %}
-        {% if current_user %}<form method="post" action="{{ url_for('auth.logout') }}" class="nav-logout"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="link">Log out</button></form>{% endif %}
+      <a class="brand" href="{{ url_for('main.home') }}" aria-label="Karahi House home"><img src="{{ url_for('static', filename='img/karahi-mark.svg') }}" alt="" width="68" height="58"><span class="brand-word">Karahi House<small>THE ART OF FIRE</small></span></a>
+      <nav id="site-navigation" class="nav" aria-label="Main navigation">
+        {% for endpoint, label in [('main.home','Home'),('main.menu','Menu'),('main.reserve','Reserve a table'),('main.about','Visit us'),('main.contact','Contact')] %}
+          {% set destination = url_for(endpoint) %}
+          {% set active = request.path == destination or (endpoint == 'main.menu' and request.path.startswith(destination ~ '/')) %}
+          <a href="{{ destination }}"{% if active %} aria-current="page"{% endif %}>{{ label }}</a>
+        {% endfor %}
       </nav>
       <div class="actions">
-        {% if not storefront %}
-        <form method="post" action="{{ url_for('main.set_order_type') }}" class="segmented header-order" aria-label="Order type">
-          <input type="hidden" name="_csrf" value="{{ csrf_token() }}">
-          <input type="hidden" name="next" value="{{ request.path }}">
-          <button name="order_type" value="delivery" class="{{ 'on' if order_type == 'delivery' }}" aria-pressed="{{ 'true' if order_type == 'delivery' else 'false' }}">Delivery</button>
-          <button name="order_type" value="pickup" class="{{ 'on' if order_type == 'pickup' }}" aria-pressed="{{ 'true' if order_type == 'pickup' else 'false' }}">Pick up</button>
-        </form>
-        {% endif %}
         {% if current_user %}
-          <a class="account-link" href="{{ url_for('workspace.home') }}">{{ current_user.name.split()[0] }}</a>
-        {% else %}<a class="account-link" href="{{ url_for('auth.login') }}">Log in</a>{% endif %}
+          <details class="account-menu"><summary class="account-link" aria-label="Account menu">{{ icon('user', 18) }}<span>{{ current_user.name.split()[0] }}</span>{{ icon('chevron-down', 13) }}</summary>
+            <div class="account-popover"><a href="{{ url_for('workspace.home') }}">My workspace</a><a href="{{ url_for('shop.orders') }}">My orders</a>
+              {% if current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Administration</a>{% endif %}{% if staff_profile %}<a href="{{ url_for('auth.staff_inbox') }}">Staff inbox</a>{% endif %}
+              <form method="post" action="{{ url_for('auth.logout') }}"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button type="submit">Log out</button></form>
+            </div>
+          </details>
+        {% else %}<a class="account-link" aria-label="Log in" href="{{ url_for('auth.login') }}">{{ icon('user', 18) }}<span>Log in</span></a>{% endif %}
         <a class="cart-link" data-open-bag href="{{ url_for('shop.cart_view') }}" aria-label="Cart, {{ cart.count if cart else 0 }} items">{{ icon('bag', 22) }}<span class="count">{{ cart.count if cart else 0 }}</span></a>
+        <button class="nav-toggle" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false">{{ icon('menu', 24) }}</button>
       </div>
     </div>
   </header>
@@ -56,5 +53,6 @@
   <dialog class="bag-drawer" id="bag-drawer" aria-labelledby="bag-title"><header><div><span class="overline">FRESH FROM THE KITCHEN</span><h2 id="bag-title">Your bag.</h2></div><button type="button" class="drawer-close" data-close-bag aria-label="Close bag">×</button></header><div class="drawer-content">{% if cart and cart.items %}{% for line in cart.items %}<div class="summary-line"><img src="{{ menu_image(line.item) }}" alt=""><span>{{ line.quantity }} × {{ line.item.name }}</span><strong>{{ currency_symbol }}{{ '%.2f'|format(line.line_total) }}</strong></div>{% endfor %}{% else %}<p>Your bag is empty. Discover something delicious.</p>{% endif %}</div><footer>{% if cart and cart.items %}<div class="hours-row"><strong>Subtotal</strong><strong>{{ currency_symbol }}{{ '%.2f'|format(cart.subtotal) }}</strong></div><a class="brand-button dark wide" href="{{ url_for('shop.checkout') }}">Checkout ↗</a><a class="text-arrow" href="{{ url_for('shop.cart_view') }}">Edit bag</a>{% else %}<a class="brand-button dark wide" href="{{ url_for('main.menu') }}">Explore menu ↗</a>{% endif %}</footer></dialog>
   <script src="{{ url_for('static', filename='js/main.js') }}" defer></script><script src="{{ url_for('static', filename='js/brand.js') }}" defer></script>
   <script src="{{ url_for('static', filename='js/premium.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/glass-header.js') }}" defer></script>
 </body>
 </html>
