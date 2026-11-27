@@ -1,4 +1,4 @@
-# Free classroom demo. SQLite data is recreated if Render replaces the filesystem.
+# Classroom demonstration; SQLite is ephemeral on free Render services.
 services:
   - type: web
     name: karahi-house
@@ -10,3 +10,15 @@ services:
     envVars:
       - key: SECRET_KEY
         generateValue: true
+      - key: RESTRO_DEMO
+        value: "1"
+      - key: COOKIE_SECURE
+        value: "1"
+      - key: DATABASE_URL
+        value: sqlite:///restroiq_render_v5.db
+      - key: DEMO_OWNER_PASSWORD
+        sync: false
+      - key: DEMO_STAFF_PASSWORD
+        sync: false
+      - key: DEMO_CUSTOMER_PASSWORD
+        sync: false

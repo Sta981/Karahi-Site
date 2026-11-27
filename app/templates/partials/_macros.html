@@ -22,7 +22,7 @@
     <h3><a href="{{ url_for('main.item_detail', item_id=item.id) }}">{{ item.name }}</a></h3>
     <p class="desc">{{ item.description }}</p>
     <p class="meta">{{ badges(item) }}{% if item.avg_rating %}<span class="rating">★ {{ item.avg_rating }}</span>{% endif %}</p>
-    <span class="price">${{ '%.2f'|format(item.price) }}</span>
+    <span class="price">{{ currency_symbol }}{{ '%.2f'|format(item.price) }}</span>
   </div>
   <a class="thumb" href="{{ url_for('main.item_detail', item_id=item.id) }}" tabindex="-1" aria-hidden="true"><img src="{{ menu_image(item) }}" alt="" loading="lazy" width="160" height="172"></a>
   <a class="add-item" href="{{ url_for('main.item_detail', item_id=item.id) }}" aria-label="Choose {{ item.name }}"><span aria-hidden="true">+</span></a>

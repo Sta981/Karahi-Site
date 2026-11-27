@@ -1,0 +1,79 @@
+allergens: 3
+categories: 7
+combos: 2
+coupons: 3
+delivery_drivers: 2
+delivery_zones: 5
+modifier_groups: 2
+payment_methods: 3
+permissions: 8
+promotions: 2
+roles: 7
+store_info: 1
+suppliers: 2
+tags: 4
+dining_tables: 8
+holidays: 1
+ingredients: 7
+menu_items: 24
+modifier_options: 7
+opening_hours: 7
+role_permissions: 22
+users: 20
+addresses: 12
+audit_logs: 56
+carts: 12
+cash_sessions: 7
+combo_items: 6
+contact_messages: 12
+expenses: 7
+favorites: 12
+item_allergens: 24
+item_images: 24
+item_ingredients: 17
+item_modifier_groups: 28
+item_tags: 25
+loyalty_accounts: 12
+notifications: 18
+nutrition_info: 24
+orders: 56
+promotion_items: 2
+purchase_orders: 7
+reservations: 26
+reviews: 14
+staff_members: 7
+stock_batches: 12
+attendance_records: 42
+cart_items: 12
+coupon_usages: 14
+deliveries: 14
+loyalty_transactions: 52
+order_items: 112
+order_status_history: 230
+payments: 56
+purchase_order_items: 7
+review_replies: 12
+service_requests: 12
+staff_leaves: 2
+staff_messages: 13
+staff_payrolls: 7
+staff_shifts: 49
+stock_movements: 218
+cart_item_modifiers: 12
+order_item_modifiers: 56
+PASS: seven days, 56 orders, 52 paid, 7 staff, 26 reservations, 7 purchases, 13 messages, 7 cash sessions, loyalty reconciliation, stock reconciliation, foreign keys, repeat-run guard
+RENDER PASS /
+RENDER PASS /menu
+RENDER PASS /menu/1
+RENDER PASS /reserve
+RENDER PASS /about
+RENDER PASS /contact
+RENDER PASS /workspace/customer
+RENDER PASS /orders
+RENDER PASS /orders/49
+RENDER PASS /cart
+RENDER PASS /checkout
+RENDER PASS /profile
+RENDER PASS /account/login
+RENDER PASS /account/register
+RENDER PASS /error

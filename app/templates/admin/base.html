@@ -15,10 +15,10 @@
   <a class="skip" href="#main">Skip to content</a>
 
   <!-- RestroIQ Modern Sidebar -->
-  <aside class="sidebar" id="sidebar">
+  <aside class="sidebar" id="sidebar" data-scope="owner">
     <div class="sidebar-brand-row">
       <a class="brand" href="{{ url_for('admin.dashboard') }}">
-        <span class="brand-mark">
+        <img src="{{ url_for('static',filename='img/restroiq-mark.svg') }}" alt="" width="40" height="40"><span class="brand-mark" hidden style="display:none">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
           </svg>
@@ -39,6 +39,7 @@
         <span class="nav-icon">⊞</span>
         <span class="nav-label">Dashboard</span>
       </a>
+      <a href="{{ url_for('workspace.manager') }}" class="nav-item"><span class="nav-icon">▤</span><span class="nav-label">Restaurant operations</span></a>
       <a href="{{ url_for('admin.orders') }}" class="nav-item {{ 'active' if request.endpoint == 'admin.orders' }}">
         <span class="nav-icon">✉</span>
         <span class="nav-label">Order & POS</span>
@@ -94,13 +95,6 @@
       {% endfor %}
     </nav>
 
-    <!-- Upgrade to Pro Card (Matching Reference Picture) -->
-    <div class="upgrade-card">
-      <div class="upgrade-icon">🍕</div>
-      <div class="upgrade-title">Unlock advanced tools</div>
-      <p class="upgrade-desc">Manage your restaurant more efficiently with AI.</p>
-      <a href="{{ url_for('admin.analytics') }}" class="upgrade-btn">Upgrade to pro</a>
-    </div>
 
     <div class="sidebar-footer">
       <a class="visit-site-link" href="{{ url_for('main.home') }}" target="_blank">
@@ -114,7 +108,7 @@
   </aside>
 
   <!-- Main Application Shell -->
-  <div class="shell">
+  <div class="shell">{% if demo_mode %}<div style="padding:8px 16px;background:#fff0d7;color:#654718;font-size:12px;font-weight:700">DEMONSTRATION MODE · Synthetic business records</div>{% endif %}
     <header class="topbar">
       <button class="icon-button" id="sidebar-toggle" type="button" aria-label="Toggle sidebar">☰</button>
       <div class="topbar-title">
@@ -129,16 +123,16 @@
         <button class="topbar-icon-btn" id="theme-toggle" title="Toggle Dark/Light Mode">
           <span class="theme-icon">◐</span>
         </button>
-        <a href="{{ url_for('admin.list_rows', table='contact_messages') }}" class="topbar-icon-btn" title="Inbox Messages">
+        <a href="{{ url_for('workspace.notifications') }}" class="topbar-icon-btn" title="Notifications">
           <span>🔔</span>
-          <span class="notification-dot"></span>
+          {% if unread_notifications %}<span class="notification-dot"></span>{% endif %}
         </a>
 
         <div class="admin-profile-pill">
           <img class="profile-avatar" src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=120&q=80" alt="Avatar">
           <div class="profile-info">
-            <strong>{{ current_user.name if current_user else 'Syed Tahir' }}</strong>
-            <small>Admin</small>
+            <strong>{{ current_user.name }}</strong>
+            <small>Owner</small>
           </div>
         </div>
       </div>
@@ -157,12 +151,13 @@
       {% block content %}{% endblock %}
 
       <footer class="admin-footer">
-        <div>RestroIQ Restaurant Operating System · Production Release</div>
+        <div>RestroIQ Restaurant Operating System · Foundation V2</div>
         <div>Connected to: <strong>{{ store.name if store else 'Karahi House' }}</strong></div>
       </footer>
     </main>
   </div>
 
   <script src="{{ url_for('static', filename='js/admin.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sidebar-state.js') }}"></script>
 </body>
 </html>

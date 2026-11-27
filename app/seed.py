@@ -4,6 +4,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from werkzeug.security import generate_password_hash
 
+import os
 from .extensions import db
 from .models import (Address, Allergen, Category, Combo, ComboItem, Coupon, DeliveryDriver,
                      DeliveryZone, DiningTable, Holiday, Ingredient, ItemImage, LoyaltyAccount,
@@ -123,11 +124,12 @@ def seed_staff_and_demo():
                 if item_name in items:
                     it = items[item_name]
                     o.items.append(OrderItem(item_id=it.id, name=it.name, unit_price=it.price, quantity=qty))
+            o.subtotal = o.total = round(sum(i.unit_price*i.quantity for i in o.items),2)
             o.history.append(OrderStatusHistory(status="placed"))
             if o_status != "placed":
                 o.history.append(OrderStatusHistory(status=o_status))
             if p_method:
-                o.payment = Payment(method=p_method, amount=total, status="paid")
+                o.payment = Payment(method=p_method, amount=o.total, status="paid" if o_status == "completed" else "pending")
             db.session.add(o)
 
     db.session.commit()
@@ -143,9 +145,9 @@ def seed_if_empty():
     db.session.add_all([admin_role, customer_role])
 
     admin = User(name="Karahi Admin", email="admin@karahihouse.test", role=admin_role,
-                 password_hash=generate_password_hash("Admin12345"))
+                 password_hash=generate_password_hash(os.environ.get("DEMO_OWNER_PASSWORD", "Admin12345")))
     diner = User(name="Ayesha Khan", email="ayesha@example.com", phone="415-555-0142", role=customer_role,
-                 password_hash=generate_password_hash("Customer123"))
+                 password_hash=generate_password_hash(os.environ.get("DEMO_CUSTOMER_PASSWORD", "Customer123")))
     admin.loyalty, diner.loyalty = LoyaltyAccount(points=0), LoyaltyAccount(points=120)
     diner.addresses.append(Address(label="Home", street="500 Hyde Street", zip_code="94109"))
     db.session.add_all([admin, diner])
@@ -228,6 +230,6 @@ def seed_if_empty():
                             ("Chicken Biryani", 4, "Generous portion, good raita.")]:
         db.session.add(Review(user_id=diner.id, item_id=items[n].id, rating=rating, comment=text))
 
-    # ---------- Staff & HR & Demo Orders (RestroIQ) ----------
-    seed_staff_and_demo()
+    # Catalog only; the connected seven-day dataset is seeded separately.
+    db.session.commit()
 

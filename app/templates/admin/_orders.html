@@ -33,7 +33,7 @@
           <span class="item-tag-pill">{{ item.quantity }}× {{ item.name }}</span>
           {% endfor %}
         </td>
-        <td><strong>${{ '%.2f'|format(o.total) }}</strong></td>
+        <td><strong>{{ currency_symbol }}{{ '%.2f'|format(o.total) }}</strong></td>
         <td>
           <span class="status-badge status-{{ o.status }}">
             {{ o.status|title }}

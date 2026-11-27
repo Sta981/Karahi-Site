@@ -1,0 +1,4 @@
+# V4.1 menu visibility
+The V4 menu placed a large hero and offers above the catalog. The new menu is compact, shows the available dish count, places offers after dishes and distinguishes empty search results from an empty/unavailable catalog. Existing availability controls remain enforced; no inactive items are automatically reactivated. A demo-mode empty catalog now raises a clear setup error instead of attempting to seed an incomplete database. Use a fresh database name for the synthetic demo. No existing databases are modified by this change.
+
+Verification: isolated SQLAlchemy SQLite seeded dataset, 24 available dishes rendered in Jinja fixtures. Chromium checked 24 cards and first-card visibility at 1440x900 and 390x900; all 15 fixture routes passed horizontal overflow checks. Cart drawer, booking step navigation, and home link checks passed. Full live Flask testing unavailable because Flask and Flask-SQLAlchemy are not installed in this environment.

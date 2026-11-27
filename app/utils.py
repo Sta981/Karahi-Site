@@ -30,7 +30,8 @@ def check_csrf():
 # ---------- Auth ----------
 def current_user():
     uid = session.get("user_id")
-    return db.session.get(User, uid) if uid else None
+    user = db.session.get(User, uid) if uid else None
+    return user if user and user.is_active else None
 
 
 def login_required(view):
@@ -48,8 +49,9 @@ def admin_required(view):
     def wrapped(*args, **kwargs):
         user = current_user()
         if not user:
-            return redirect(url_for("auth.login", next=request.path))
-        if not user.is_admin:
+            return redirect(url_for("auth.staff_login", next=request.path))
+        from .access import permitted
+        if not permitted(user, "owner"):
             abort(403)
         return view(*args, **kwargs)
     return wrapped
@@ -57,7 +59,7 @@ def admin_required(view):
 
 def safe_next(target):
     """Only allow same-site relative redirects."""
-    return target if target and target.startswith("/") and not target.startswith("//") else None
+    return target if target and target.startswith("/") and not target.startswith("//") and "\\" not in target and not any(ord(c) < 32 for c in target) else None
 
 
 # ---------- Validation ----------

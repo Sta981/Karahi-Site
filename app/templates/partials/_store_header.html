@@ -13,7 +13,7 @@
   <h1>{{ store.name if store else 'Karahi House' }}</h1>
   {% if store %}
   <div class="store-facts">
-    <p>{{ icon('location', 18) }}<a href="{{ url_for('main.about') }}">{{ store.street }}, {{ store.city }}, CA {{ store.zip_code }}</a></p>
+    <p>{{ icon('location', 18) }}<a href="{{ url_for('main.about') }}">{{ store.street }}, {{ store.city }}, {{ store.zip_code }}</a></p>
     <p>{{ icon('phone', 18) }}<a class="phone" href="tel:{{ store.phone }}">{{ store.phone }}</a><span class="fact-divider">·</span><a href="{{ url_for('main.reserve') }}">Reserve a table {{ icon('arrow', 13) }}</a></p>
     <p>{{ icon('clock', 18) }}<a href="{{ url_for('main.about') }}" class="hours-link">{{ store_status.text }} {{ icon('arrow', 13) }}</a></p>
   </div>

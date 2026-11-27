@@ -1,4 +1,6 @@
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
+
+from sqlalchemy import or_
 
 from flask import (Blueprint, abort, flash, make_response, redirect, render_template, request,
                    session, url_for)
@@ -9,6 +11,7 @@ from ..models import (Category, ContactMessage, DiningTable, MenuItem, OpeningHo
 from ..utils import check_csrf, current_user, safe_next, valid_email, valid_phone
 
 bp = Blueprint("main", __name__)
+DEPARTMENTS = [("management", "Restaurant manager", "Events, complaints and feedback"), ("kitchen", "Chef & kitchen", "Dietary requirements and menu questions"), ("service", "Waiters & service", "Table service and dining requests"), ("reservations", "Reservations team", "Bookings and special occasions")]
 DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"]
 
 
@@ -36,7 +39,7 @@ def menu_page(template):
                   for c in Category.query.order_by(Category.sort_order).all()]
     categories = [(c, its) for c, its in categories if its]
     today = date.today()
-    promos = Promotion.query.filter(Promotion.ends_on >= today).all()
+    promos = Promotion.query.filter(or_(Promotion.starts_on.is_(None), Promotion.starts_on <= today), or_(Promotion.ends_on.is_(None), Promotion.ends_on >= today)).all()
     return render_template(template, categories=categories, promos=promos,
                            tags=Tag.query.order_by(Tag.name).all(), q=q, active_tag=tag,
                            count=len(items), storefront=True)
@@ -75,23 +78,30 @@ def contact():
     if request.method == "POST":
         check_csrf()
         form = {k: request.form.get(k, "").strip() for k in ("name", "email", "message")}
-        if len(form["name"]) < 2:
+        form["department"] = request.form.get("department", "management")
+        if form["department"] not in {d[0] for d in DEPARTMENTS}:
+            errors["department"] = "Choose a valid department."
+        if not 2 <= len(form["name"]) <= 80:
             errors["name"] = "Tell us your name."
-        if not valid_email(form["email"]):
+        if not valid_email(form["email"]) or len(form["email"]) > 120:
             errors["email"] = "Enter a valid email address."
-        if len(form["message"]) < 10:
-            errors["message"] = "Write at least 10 characters."
+        if not 10 <= len(form["message"]) <= 2000:
+            errors["message"] = "Write between 10 and 2000 characters."
         if not errors:
-            db.session.add(ContactMessage(**form))
+            label = next(d[1] for d in DEPARTMENTS if d[0] == form["department"])
+            db.session.add(ContactMessage(name=form["name"], email=form["email"], message=form["message"], department=form["department"], user_id=current_user().id if current_user() else None))
+            from ..operations import notify_roles
+            notify_roles(("manager",), "New customer enquiry.")
             db.session.commit()
-            flash("Message sent. We'll reply by email.", "success")
+            flash("Your enquiry has been saved for the restaurant team.", "success")
             return redirect(url_for("main.contact"))
-    return render_template("main/contact.html", form=form, errors=errors)
+    return render_template("main/contact.html", form=form, errors=errors, departments=DEPARTMENTS)
 
 
 @bp.route("/reserve", methods=["GET", "POST"])
 def reserve():
-    form, errors = {}, {}
+    user = current_user()
+    form, errors = ({"guest_name": user.name, "guest_phone": user.phone or ""} if user else {}), {}
     if request.method == "POST":
         check_csrf()
         form = {k: request.form.get(k, "").strip() for k in ("guest_name", "guest_phone", "party_size", "when")}
@@ -116,7 +126,8 @@ def reserve():
         table = None
         if not errors:
             for candidate in DiningTable.query.filter(DiningTable.seats >= size).order_by(DiningTable.seats).all():
-                clash = Reservation.query.filter_by(table_id=candidate.id, reserved_for=when).first()
+                DiningTable.query.filter_by(id=candidate.id).update({DiningTable.seats: DiningTable.seats}, synchronize_session=False)
+                clash = Reservation.query.filter(Reservation.table_id == candidate.id, Reservation.status != "cancelled", Reservation.reserved_for < when + timedelta(hours=2), Reservation.ends_at > when).first()
                 if not clash:
                     table = candidate
                     break
@@ -124,10 +135,13 @@ def reserve():
                 errors["when"] = "No table free for that time. Try another slot."
         if not errors:
             user = current_user()
-            db.session.add(Reservation(table=table, user_id=user.id if user else None,
-                                       guest_name=form["guest_name"], guest_phone=form["guest_phone"],
-                                       party_size=size, reserved_for=when))
+            booking = Reservation(table=table, user_id=user.id if user else None,
+                                  guest_name=form["guest_name"], guest_phone=form["guest_phone"],
+                                  party_size=size, reserved_for=when, ends_at=when + timedelta(hours=2))
+            db.session.add(booking)
+            from ..operations import notify_roles
+            notify_roles(("manager",), "New confirmed table reservation.")
             db.session.commit()
-            flash(f"Table booked for {size} on {when:%a %b %d at %I:%M %p}.", "success")
+            flash(f"Reservation KH-{booking.id} confirmed for {size} on {when:%a %b %d at %I:%M %p}.", "success")
             return redirect(url_for("main.reserve"))
     return render_template("main/reserve.html", form=form, errors=errors)

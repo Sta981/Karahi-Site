@@ -1,4 +1,4 @@
-"""All 42 SQLAlchemy models for the Karahi House site, grouped by domain."""
+"""SQLAlchemy models for the Karahi House site, grouped by domain."""
 from datetime import date, datetime, timezone
 
 from .extensions import db
@@ -27,15 +27,16 @@ class User(TimestampMixin, db.Model):
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     phone = db.Column(db.String(30))
+    is_active = db.Column(db.Boolean, nullable=False, default=True)
     password_hash = db.Column(db.String(256), nullable=False)
     role = db.relationship("Role", back_populates="users")
     addresses = db.relationship("Address", back_populates="user", cascade="all, delete-orphan")
-    orders = db.relationship("Order", back_populates="user")
+    orders = db.relationship("Order", back_populates="user", foreign_keys="Order.user_id")
     reviews = db.relationship("Review", back_populates="user")
 
     @property
     def is_admin(self):
-        return self.role.name == "admin"
+        return self.role.name in ("admin", "owner")
 
     def __str__(self):
         return self.name
@@ -195,6 +196,8 @@ class Ingredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(60), unique=True, nullable=False)
     supplier_id = db.Column(db.Integer, db.ForeignKey("suppliers.id"))
+    unit = db.Column(db.String(16), nullable=False, default="kg")
+    reorder_level = db.Column(db.Numeric(12,3), nullable=False, default=0)
     items = db.relationship("MenuItem", secondary="item_ingredients", back_populates="ingredients")
     supplier = db.relationship("Supplier", back_populates="ingredients")
 
@@ -207,6 +210,8 @@ class ItemIngredient(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     item_id = db.Column(db.Integer, db.ForeignKey("menu_items.id"), nullable=False)
     ingredient_id = db.Column(db.Integer, db.ForeignKey("ingredients.id"), nullable=False)
+    quantity = db.Column(db.Numeric(12,3), nullable=False, default=0)
+    __table_args__ = (db.UniqueConstraint("item_id", "ingredient_id"), db.CheckConstraint("quantity >= 0"))
 
 
 class Supplier(db.Model):
@@ -326,7 +331,11 @@ class Order(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     coupon_id = db.Column(db.Integer, db.ForeignKey("coupons.id"))
-    order_type = db.Column(db.String(10), nullable=False)  # delivery | pickup
+    table_id = db.Column(db.Integer, db.ForeignKey("dining_tables.id"))
+    waiter_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    table = db.relationship("DiningTable")
+    waiter = db.relationship("User", foreign_keys=[waiter_id])
+    order_type = db.Column(db.String(10), nullable=False)  # delivery | pickup | dine_in
     status = db.Column(db.String(20), default="placed", nullable=False)
     customer_name = db.Column(db.String(80), nullable=False)
     customer_phone = db.Column(db.String(30), nullable=False)
@@ -334,11 +343,19 @@ class Order(TimestampMixin, db.Model):
     discount = db.Column(db.Float, default=0)
     delivery_fee = db.Column(db.Float, default=0)
     total = db.Column(db.Float, nullable=False)
-    user = db.relationship("User", back_populates="orders")
+    user = db.relationship("User", back_populates="orders", foreign_keys=[user_id])
     coupon = db.relationship("Coupon")
     items = db.relationship("OrderItem", back_populates="order", cascade="all, delete-orphan")
     history = db.relationship("OrderStatusHistory", back_populates="order", cascade="all, delete-orphan")
-    payment = db.relationship("Payment", back_populates="order", uselist=False, cascade="all, delete-orphan")
+    payments = db.relationship("Payment", back_populates="order", cascade="all, delete-orphan", order_by="Payment.id")
+
+    @property
+    def payment(self):
+        return self.payments[0] if self.payments else None
+
+    @payment.setter
+    def payment(self, value):
+        self.payments.append(value)
     delivery = db.relationship("Delivery", back_populates="order", uselist=False, cascade="all, delete-orphan")
 
 
@@ -369,6 +386,7 @@ class OrderStatusHistory(TimestampMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
     status = db.Column(db.String(20), nullable=False)
+    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"))
     order = db.relationship("Order", back_populates="history")
 
 
@@ -385,11 +403,12 @@ class PaymentMethod(db.Model):
 class Payment(TimestampMixin, db.Model):
     __tablename__ = "payments"
     id = db.Column(db.Integer, primary_key=True)
-    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), unique=True, nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey("orders.id"), nullable=False)
     method_id = db.Column(db.Integer, db.ForeignKey("payment_methods.id"), nullable=False)
     amount = db.Column(db.Float, nullable=False)
     status = db.Column(db.String(20), default="pending")
-    order = db.relationship("Order", back_populates="payment")
+    received_by = db.Column(db.Integer, db.ForeignKey("users.id"))
+    order = db.relationship("Order", back_populates="payments")
     method = db.relationship("PaymentMethod")
 
 
@@ -535,6 +554,8 @@ class Reservation(TimestampMixin, db.Model):
     guest_phone = db.Column(db.String(30), nullable=False)
     party_size = db.Column(db.Integer, nullable=False)
     reserved_for = db.Column(db.DateTime, nullable=False)
+    ends_at = db.Column(db.DateTime)
+    status = db.Column(db.String(20), nullable=False, default="confirmed")
     table = db.relationship("DiningTable", back_populates="reservations")
     user = db.relationship("User", backref="reservations")
 
@@ -577,6 +598,9 @@ class ContactMessage(TimestampMixin, db.Model):
     name = db.Column(db.String(80), nullable=False)
     email = db.Column(db.String(120), nullable=False)
     message = db.Column(db.Text, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"))
+    assigned_to = db.Column(db.Integer, db.ForeignKey("users.id"))
+    department = db.Column(db.String(30), nullable=False, default="management")
     is_resolved = db.Column(db.Boolean, default=False)
 
 
@@ -584,12 +608,13 @@ class ContactMessage(TimestampMixin, db.Model):
 class StaffMember(TimestampMixin, db.Model):
     __tablename__ = "staff_members"
     id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True, unique=True)
     name = db.Column(db.String(80), nullable=False)
     role = db.Column(db.String(50), nullable=False)  # Lead Operations, Head Chef, Cooker, Waiter / Server, Sales Manager
     phone = db.Column(db.String(30))
     email = db.Column(db.String(120))
     salary_monthly = db.Column(db.Float, default=2500.0)
+    manager_id = db.Column(db.Integer, db.ForeignKey("staff_members.id"))
     shift_status = db.Column(db.String(20), default="On Duty")  # On Duty, Off Duty, On Break
     shift_hours_done = db.Column(db.Float, default=6.0)
     shift_hours_total = db.Column(db.Float, default=10.0)
@@ -637,3 +662,136 @@ class StaffPayroll(TimestampMixin, db.Model):
     def __str__(self):
         return f"{self.staff.name if self.staff else 'Staff'} - {self.month} {self.year}: ${self.net_salary:.2f}"
 
+
+
+class StaffMessage(TimestampMixin, db.Model):
+    __tablename__ = "staff_messages"
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey("staff_members.id", ondelete="CASCADE"), nullable=False, index=True)
+    sender_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=False)
+    subject = db.Column(db.String(120), nullable=False)
+    body = db.Column(db.Text, nullable=False)
+    reply = db.Column(db.Text)
+    replied_at = db.Column(db.DateTime)
+    staff = db.relationship("StaffMember", backref=db.backref("messages", cascade="all, delete-orphan"))
+    sender = db.relationship("User")
+
+
+# ---------- Operational foundation ----------
+class Permission(db.Model):
+    __tablename__ = 'permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    code = db.Column(db.String(64), unique=True, nullable=False)
+
+
+class RolePermission(db.Model):
+    __tablename__ = 'role_permissions'
+    id = db.Column(db.Integer, primary_key=True)
+    role_id = db.Column(db.Integer, db.ForeignKey('roles.id'), nullable=False)
+    permission_id = db.Column(db.Integer, db.ForeignKey('permissions.id'), nullable=False)
+    __table_args__ = (db.UniqueConstraint('role_id', 'permission_id'),)
+
+
+class AuditLog(TimestampMixin, db.Model):
+    __tablename__ = 'audit_logs'
+    id = db.Column(db.Integer, primary_key=True)
+    actor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    action = db.Column(db.String(80), nullable=False)
+    entity = db.Column(db.String(80), nullable=False)
+    entity_id = db.Column(db.Integer, nullable=False)
+
+
+class StaffShift(db.Model):
+    __tablename__ = 'staff_shifts'
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff_members.id'), nullable=False)
+    starts_at = db.Column(db.DateTime, nullable=False)
+    ends_at = db.Column(db.DateTime, nullable=False)
+    staff = db.relationship('StaffMember')
+    __table_args__ = (db.CheckConstraint('ends_at > starts_at'),)
+
+
+class AttendanceRecord(db.Model):
+    __tablename__ = 'attendance_records'
+    id = db.Column(db.Integer, primary_key=True)
+    staff_id = db.Column(db.Integer, db.ForeignKey('staff_members.id'), nullable=False)
+    clock_in = db.Column(db.DateTime, nullable=False, default=utcnow)
+    clock_out = db.Column(db.DateTime)
+    __table_args__ = (db.CheckConstraint('clock_out IS NULL OR clock_out >= clock_in'),)
+
+
+class StockBatch(TimestampMixin, db.Model):
+    __tablename__ = 'stock_batches'
+    id = db.Column(db.Integer, primary_key=True)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'))
+    remaining = db.Column(db.Numeric(12,3), nullable=False)
+    unit_cost = db.Column(db.Numeric(12,2), nullable=False)
+    expires_on = db.Column(db.Date)
+    ingredient = db.relationship('Ingredient')
+    __table_args__ = (db.CheckConstraint('remaining >= 0'), db.CheckConstraint('unit_cost >= 0'))
+
+
+class StockMovement(TimestampMixin, db.Model):
+    __tablename__ = 'stock_movements'
+    id = db.Column(db.Integer, primary_key=True)
+    batch_id = db.Column(db.Integer, db.ForeignKey('stock_batches.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
+    actor_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    quantity = db.Column(db.Numeric(12,3), nullable=False)
+    reason = db.Column(db.String(30), nullable=False)
+    batch = db.relationship('StockBatch')
+    __table_args__ = (db.CheckConstraint('quantity != 0'),)
+
+
+class PurchaseOrder(TimestampMixin, db.Model):
+    __tablename__ = 'purchase_orders'
+    id = db.Column(db.Integer, primary_key=True)
+    supplier_id = db.Column(db.Integer, db.ForeignKey('suppliers.id'), nullable=False)
+    requested_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='draft')
+    supplier = db.relationship('Supplier')
+    lines = db.relationship('PurchaseOrderItem', back_populates='purchase', cascade='all, delete-orphan')
+
+
+class PurchaseOrderItem(db.Model):
+    __tablename__ = 'purchase_order_items'
+    id = db.Column(db.Integer, primary_key=True)
+    purchase_id = db.Column(db.Integer, db.ForeignKey('purchase_orders.id'), nullable=False)
+    ingredient_id = db.Column(db.Integer, db.ForeignKey('ingredients.id'), nullable=False)
+    quantity = db.Column(db.Numeric(12,3), nullable=False)
+    unit_cost = db.Column(db.Numeric(12,2), nullable=False)
+    purchase = db.relationship('PurchaseOrder', back_populates='lines')
+    ingredient = db.relationship('Ingredient')
+    __table_args__ = (db.CheckConstraint('quantity > 0'), db.CheckConstraint('unit_cost >= 0'))
+
+
+class Expense(TimestampMixin, db.Model):
+    __tablename__ = 'expenses'
+    id = db.Column(db.Integer, primary_key=True)
+    recorded_by = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    category = db.Column(db.String(60), nullable=False)
+    description = db.Column(db.String(200), nullable=False)
+    amount = db.Column(db.Numeric(12,2), nullable=False)
+    __table_args__ = (db.CheckConstraint('amount > 0'),)
+
+
+class CashSession(db.Model):
+    __tablename__ = 'cash_sessions'
+    id = db.Column(db.Integer, primary_key=True)
+    cashier_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    opened_at = db.Column(db.DateTime, nullable=False, default=utcnow)
+    closed_at = db.Column(db.DateTime)
+    opening_balance = db.Column(db.Numeric(12,2), nullable=False)
+    closing_balance = db.Column(db.Numeric(12,2))
+    __table_args__ = (db.CheckConstraint('opening_balance >= 0'), db.CheckConstraint('closing_balance IS NULL OR closing_balance >= 0'))
+
+
+class ServiceRequest(TimestampMixin, db.Model):
+    __tablename__ = 'service_requests'
+    id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    order_id = db.Column(db.Integer, db.ForeignKey('orders.id'))
+    assigned_to = db.Column(db.Integer, db.ForeignKey('users.id'))
+    body = db.Column(db.String(500), nullable=False)
+    status = db.Column(db.String(20), nullable=False, default='open')

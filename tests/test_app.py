@@ -4,12 +4,12 @@ import pytest
 
 from app import create_app
 from app.extensions import db
-from app.models import MenuItem, Order, Review, User
+from app.models import MenuItem, Order, Review, User, Cart
 
 
 @pytest.fixture()
 def client(tmp_path):
-    app = create_app({"TESTING": True, "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 't.db'}"})
+    app = create_app({"TESTING": True, "DEMO_MODE": True, "SQLALCHEMY_DATABASE_URI": f"sqlite:///{tmp_path / 't.db'}"})
     with app.test_client() as c:
         c.app = app
         yield c
@@ -21,7 +21,8 @@ def token(client, url="/menu"):
 
 
 def login(client, email, password):
-    return client.post("/account/login", data={"email": email, "password": password, "_csrf": token(client, "/account/login")})
+    path = "/account/staff-login" if email.endswith("@restroiq.test") or email == "admin@karahihouse.test" else "/account/login"
+    return client.post(path, data={"email": email, "password": password, "_csrf": token(client, path)})
 
 
 def test_table_minimum():
@@ -52,6 +53,11 @@ def test_register_validation_and_success(client):
 def test_cart_checkout_flow(client):
     login(client, "ayesha@example.com", "Customer123")
     with client.app.app_context():
+        demo = User.query.filter_by(email="ayesha@example.com").one()
+        cart = Cart.query.filter_by(user_id=demo.id).first()
+        if cart:
+            cart.items.clear()
+            db.session.commit()
         item = MenuItem.query.filter_by(name="Chicken Karahi").first()
         spice = item.modifier_groups[0].options[1].id
         item_id = item.id
@@ -78,15 +84,19 @@ def test_review_crud(client):
     t = token(client)
     with client.app.app_context():
         item_id = MenuItem.query.filter_by(name="Seekh Kebab").first().id
+        demo = User.query.filter_by(email="ayesha@example.com").one()
+        for old in Review.query.filter_by(item_id=item_id, user_id=demo.id).all():
+            db.session.delete(old)
+        db.session.commit()
     client.post(f"/menu/{item_id}/review", data={"rating": 4, "comment": "Great", "_csrf": t})
     client.post(f"/menu/{item_id}/review", data={"rating": 5, "comment": "Even better", "_csrf": t})  # update
     with client.app.app_context():
-        reviews = Review.query.filter_by(item_id=item_id).all()
+        reviews = Review.query.filter_by(item_id=item_id, user_id=demo.id).all()
         assert len(reviews) == 1 and reviews[0].rating == 5
         rid = reviews[0].id
     client.post(f"/review/{rid}/delete", data={"_csrf": t})
     with client.app.app_context():
-        assert Review.query.filter_by(item_id=item_id).count() == 0
+        assert Review.query.filter_by(item_id=item_id, user_id=demo.id).count() == 0
 
 
 def test_admin_requires_role(client):
@@ -102,7 +112,8 @@ def test_admin_crud_every_table(client):
         tables = list(db.Model.metadata.tables)
     for name in tables:
         assert client.get(f"/admin/t/{name}").status_code == 200, name
-        assert client.get(f"/admin/t/{name}/new").status_code == 200, name
+        from app.blueprints.admin import PROTECTED
+        assert client.get(f"/admin/t/{name}/new").status_code == (403 if name in PROTECTED else 200), name
 
 
 def test_admin_create_edit_delete(client):
@@ -136,9 +147,9 @@ def test_restroiq_admin_dashboard(client):
     assert res.status_code == 200
     html = res.get_data(as_text=True)
     assert "Restroq" in html or "RestroIQ" in html
-    assert "Staff On Duty" in html
-    assert "POS Overview" in html
-    assert "Average Monthly Income" in html
+    assert "Staff currently on duty" in html
+    assert "Recorded Payments" in html
+    assert "Business performance" in html
 
 
 def test_restroiq_staff_and_leaves(client):
@@ -171,7 +182,80 @@ def test_customer_home_luxury_showcase(client):
     res = client.get("/")
     assert res.status_code == 200
     html = res.get_data(as_text=True)
-    assert "Real fire" in html
+    assert "Made with fire" in html
     assert "Chicken Karahi" in html
-    assert "RestroIQ" in html
+    assert "Karahi House" in html
 
+
+
+def test_staff_message_permissions_and_reply(client):
+    from app.models import StaffMember, StaffMessage
+    with client.app.app_context():
+        employee = User.query.filter_by(email='chef@restroiq.test').first()
+        staff = StaffMember.query.filter_by(user_id=employee.id).one()
+        staff_id = staff.id
+    login(client, 'admin@karahihouse.test', 'Admin12345')
+    assert client.post('/admin/staff/messages', data={'staff_id': staff_id, 'subject': 'Service briefing', 'body': 'Prepare table five.', '_csrf': token(client, '/admin/staff/messages')}).status_code == 302
+    with client.app.app_context():
+        msg_id = StaffMessage.query.filter_by(subject='Service briefing').first().id
+    login(client, 'chef@restroiq.test', 'DemoStaff123!')
+    assert b'Service briefing' in client.get('/account/staff-inbox').data
+    assert client.get('/admin/staff/messages').status_code == 403
+    assert client.post('/account/staff-inbox', data={'message_id': msg_id, 'reply': 'Confirmed.', '_csrf': token(client, '/account/staff-inbox')}).status_code == 302
+    with client.app.app_context():
+        assert db.session.get(StaffMessage, msg_id).reply == 'Confirmed.'
+    login(client, 'admin@karahihouse.test', 'Admin12345')
+    assert b'Confirmed.' in client.get('/admin/staff/messages').data
+
+
+def test_department_enquiry(client):
+    from app.models import ContactMessage
+    result = client.post('/contact', data={'name':'Test Guest','email':'test@example.com','department':'kitchen','message':'Please confirm allergy information.', '_csrf':token(client,'/contact')})
+    assert result.status_code == 302
+    with client.app.app_context():
+        assert ContactMessage.query.filter_by(email='test@example.com').first().department == 'kitchen'
+
+@pytest.mark.parametrize('role,path,denied',[
+    ('manager','manager','/admin/'),('chef','kitchen','/workspace/billing'),
+    ('waiter','waiter','/workspace/stock'),('cashier','billing','/workspace/employees'),
+    ('inventory','stock','/workspace/kitchen')])
+def test_staff_role_boundaries(client,role,path,denied):
+    assert login(client,role+'@restroiq.test','DemoStaff123!').status_code==302
+    assert client.get('/workspace/'+path).status_code==200
+    assert client.get(denied).status_code==403
+
+
+def test_customer_cannot_use_staff_login(client):
+    path='/account/staff-login'
+    r=client.post(path,data={'email':'ayesha@example.com','password':'Customer123','_csrf':token(client,path)})
+    assert r.status_code==200
+    assert client.get('/workspace/kitchen').status_code==302
+
+
+def test_employee_cannot_escalate_role(client):
+    login(client,'manager@restroiq.test','DemoStaff123!')
+    path='/workspace/employees'
+    client.post(path,data={'role':'owner','name':'Malicious','email':'test@local.test','password':'Password12345!','_csrf':token(client,path)})
+    with client.app.app_context():
+        assert User.query.filter_by(email='test@local.test').first() is None
+
+
+def test_v4_shared_public_design(client):
+    for path in ('/', '/menu', '/reserve', '/about', '/contact', '/cart'):
+        html = client.get(path).get_data(as_text=True)
+        assert 'css/premium.css' in html, path
+        assert 'id="bag-drawer"' in html, path
+    home = client.get('/').get_data(as_text=True)
+    assert 'href="#discover"' in home and 'id="discover"' in home
+    menu = client.get('/menu').get_data(as_text=True)
+    assert 'premium-dish' in menu and 'store-banner' not in menu
+    assert 'data-book-step="2"' in client.get('/reserve').get_data(as_text=True)
+
+
+def test_v4_customer_account_design(client):
+    assert login(client, 'ayesha@example.com', 'Customer123').status_code == 302
+    for path in ('/workspace/customer', '/orders', '/profile'):
+        response = client.get(path)
+        assert response.status_code == 200
+        assert 'account-nav' in response.get_data(as_text=True)
+    assert 'Loyalty points' in client.get('/workspace/customer').get_data(as_text=True)

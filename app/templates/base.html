@@ -9,22 +9,23 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&family=Roboto:wght@400;500;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="icon" href="{{ url_for('static', filename='img/karahi-mark.svg') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}"><link rel="stylesheet" href="{{ url_for('static', filename='css/brand.css') }}">
   <noscript><style>.nav { display: flex; position: static; width: auto; flex-wrap: wrap; box-shadow: none; }.bar { height: auto; min-height: 64px; flex-wrap: wrap; }.nav-toggle { display: none; }</style></noscript>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/premium.css') }}">
 </head>
-<body>
+<body class="premium-site">
   <a class="skip" href="#main">Skip to content</a>
   <header class="site-header">
     <div class="wrap bar">
       <button class="nav-toggle" type="button" aria-label="Open navigation" aria-controls="site-navigation" aria-expanded="false">{{ icon('menu', 24) }}</button>
-      <a class="brand" href="{{ url_for('main.home') }}" aria-label="Karahi House home"><img src="{{ url_for('static', filename='img/food/logo.png') }}" alt="Karahi House" width="86" height="44"></a>
+      <a class="brand" href="{{ url_for('main.home') }}" aria-label="Karahi House home"><img src="{{ url_for('static', filename='img/karahi-mark.svg') }}" alt="" width="44" height="44"><span class="brand-word">Karahi House<small>THE ART OF FIRE</small></span></a>
       <nav id="site-navigation" class="nav" aria-label="Main">
-        <a href="{{ url_for('main.menu') }}">Menu</a>
+        <a href="{{ url_for('main.home') }}">Home</a><a href="{{ url_for('main.menu') }}">Menu</a>
         <a href="{{ url_for('main.reserve') }}">Reserve a table</a>
         <a href="{{ url_for('main.about') }}">Visit us</a>
         <a href="{{ url_for('main.contact') }}">Contact</a>
         {% if current_user %}<a href="{{ url_for('shop.orders') }}">My orders</a>{% endif %}
-        {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Admin</a>{% endif %}
+        {% if current_user and current_user.is_admin %}<a href="{{ url_for('admin.dashboard') }}">Workspace</a>{% endif %}{% if current_user and staff_profile %}<a href="{{ url_for('auth.staff_inbox') }}">Staff inbox</a>{% endif %}
         {% if current_user %}<form method="post" action="{{ url_for('auth.logout') }}" class="nav-logout"><input type="hidden" name="_csrf" value="{{ csrf_token() }}"><button class="link">Log out</button></form>{% endif %}
       </nav>
       <div class="actions">
@@ -37,9 +38,9 @@
         </form>
         {% endif %}
         {% if current_user %}
-          <a class="account-link" href="{{ url_for('shop.profile') }}">{{ current_user.name.split()[0] }}</a>
+          <a class="account-link" href="{{ url_for('workspace.home') }}">{{ current_user.name.split()[0] }}</a>
         {% else %}<a class="account-link" href="{{ url_for('auth.login') }}">Log in</a>{% endif %}
-        <a class="cart-link" href="{{ url_for('shop.cart_view') }}" aria-label="Cart, {{ cart.count if cart else 0 }} items">{{ icon('bag', 22) }}<span class="count">{{ cart.count if cart else 0 }}</span></a>
+        <a class="cart-link" data-open-bag href="{{ url_for('shop.cart_view') }}" aria-label="Cart, {{ cart.count if cart else 0 }} items">{{ icon('bag', 22) }}<span class="count">{{ cart.count if cart else 0 }}</span></a>
       </div>
     </div>
   </header>
@@ -51,7 +52,9 @@
     <div><strong>{{ store.name if store else 'Karahi House' }}</strong><p>&copy; {{ year }} Karahi House</p></div>
     <nav aria-label="Footer"><a href="{{ url_for('main.menu') }}">Menu</a><a href="{{ url_for('main.about') }}">Hours &amp; location</a><a href="{{ url_for('main.contact') }}">Contact</a><a href="{{ url_for('main.reserve') }}">Reservations</a></nav>
   </div></footer>
-  {% if storefront and cart and cart.count %}<a class="floating-cart" href="{{ url_for('shop.cart_view') }}"><span class="cart-quantity">{{ cart.count }}</span><span>View cart</span><strong>${{ '%.2f'|format(cart.subtotal) }}</strong></a>{% endif %}
-  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script>
+  {% if storefront and cart and cart.count %}<a class="floating-cart" href="{{ url_for('shop.cart_view') }}" data-open-bag><span class="cart-quantity">{{ cart.count }}</span><span>View bag</span><strong>{{ currency_symbol }}{{ '%.2f'|format(cart.subtotal) }}</strong></a>{% endif %}
+  <dialog class="bag-drawer" id="bag-drawer" aria-labelledby="bag-title"><header><div><span class="overline">FRESH FROM THE KITCHEN</span><h2 id="bag-title">Your bag.</h2></div><button type="button" class="drawer-close" data-close-bag aria-label="Close bag">×</button></header><div class="drawer-content">{% if cart and cart.items %}{% for line in cart.items %}<div class="summary-line"><img src="{{ menu_image(line.item) }}" alt=""><span>{{ line.quantity }} × {{ line.item.name }}</span><strong>{{ currency_symbol }}{{ '%.2f'|format(line.line_total) }}</strong></div>{% endfor %}{% else %}<p>Your bag is empty. Discover something delicious.</p>{% endif %}</div><footer>{% if cart and cart.items %}<div class="hours-row"><strong>Subtotal</strong><strong>{{ currency_symbol }}{{ '%.2f'|format(cart.subtotal) }}</strong></div><a class="brand-button dark wide" href="{{ url_for('shop.checkout') }}">Checkout ↗</a><a class="text-arrow" href="{{ url_for('shop.cart_view') }}">Edit bag</a>{% else %}<a class="brand-button dark wide" href="{{ url_for('main.menu') }}">Explore menu ↗</a>{% endif %}</footer></dialog>
+  <script src="{{ url_for('static', filename='js/main.js') }}" defer></script><script src="{{ url_for('static', filename='js/brand.js') }}" defer></script>
+  <script src="{{ url_for('static', filename='js/premium.js') }}" defer></script>
 </body>
 </html>

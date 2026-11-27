@@ -6,7 +6,7 @@ NAV = [
         ('Dashboard Overview', '@dashboard'),
         ('Sales & Analytics', '@analytics'),
         ('Staff & Operations', '@staff'),
-        ('Data Directory (50 Tables)', '@directory')
+        ('Data Directory', '@directory')
     ]),
     ('Operations', 'Order Management', '▤', [
         ('POS Order Workspace', '@orders'),
@@ -35,6 +35,7 @@ NAV = [
     ]),
     ('Staff & HR', 'Team & Payroll', '👥', [
         ('Staff Hub & Shifts', '@staff'),
+        ('Team messages', '@staff_messages'),
         ('Staff Profiles & Roles', 'staff_members'),
         ('Leave Requests & Approvals', 'staff_leaves'),
         ('Salaries & Payroll Records', 'staff_payrolls')

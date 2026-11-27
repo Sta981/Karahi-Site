@@ -5,7 +5,7 @@ import io
 from collections import Counter
 
 from flask import (Blueprint, Response, abort, flash, redirect, render_template, request, url_for)
-from sqlalchemy import Boolean, Date, DateTime, Float, Integer, String, Text, func, inspect, or_
+from sqlalchemy import Boolean, Date, DateTime, Float, Numeric, Integer, String, Text, func, inspect, or_
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash
 
@@ -13,12 +13,13 @@ from ..admin_navigation import LABELS, NAV
 from ..extensions import db
 from ..models import (ContactMessage, DiningTable, MenuItem, Order, OrderItem,
                      OrderStatusHistory, Payment, PaymentMethod, Reservation,
-                     Review, Role, StaffLeave, StaffMember, StaffPayroll, User,
+                     Review, Role, StaffLeave, StaffMember, StaffPayroll, StaffMessage, User,
                      utcnow)
-from ..utils import admin_required, check_csrf
+from ..utils import admin_required, check_csrf, current_user, valid_email, valid_phone
 
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 PER_PAGE = 20
+PROTECTED = {'roles','permissions','role_permissions','users','staff_members','orders','order_items','order_item_modifiers','order_status_history','payments','stock_batches','stock_movements','purchase_orders','purchase_order_items','audit_logs','attendance_records','cash_sessions','service_requests','reservations','loyalty_transactions','loyalty_accounts'}
 ORDER_STATUSES = ["placed", "preparing", "ready", "out_for_delivery", "completed", "cancelled"]
 
 
@@ -63,7 +64,7 @@ def describe_fields(model):
             kind = "checkbox"
         elif isinstance(col.type, Integer):
             kind = "number"
-        elif isinstance(col.type, Float):
+        elif isinstance(col.type, (Float, Numeric)):
             kind = "float"
         elif isinstance(col.type, Text):
             kind = "textarea"
@@ -95,7 +96,10 @@ def parse_form(model, fields, instance=None):
             if f["kind"] in ("number", "select"):
                 values[name] = int(raw)
             elif f["kind"] == "float":
-                values[name] = float(raw)
+                from decimal import Decimal
+                values[name] = Decimal(raw) if isinstance(col.type, Numeric) and not isinstance(col.type, Float) else float(raw)
+                import math
+                if not math.isfinite(values[name]): raise ValueError
             elif f["kind"] == "date":
                 values[name] = datetime.strptime(raw, "%Y-%m-%d").date()
             elif f["kind"] == "datetime-local":
@@ -104,7 +108,7 @@ def parse_form(model, fields, instance=None):
                 if isinstance(col.type, String) and col.type.length and len(raw) > col.type.length:
                     errors[name] = f"Max {col.type.length} characters."
                 values[name] = raw
-        except ValueError:
+        except (ValueError, ArithmeticError):
             errors[name] = "Enter a valid value."
             continue
         if name == "email" and "@" not in raw:
@@ -127,49 +131,25 @@ def parse_form(model, fields, instance=None):
 
 @bp.app_context_processor
 def admin_navigation():
-    return {"admin_nav": NAV, "admin_labels": LABELS}
+    return {"admin_nav": NAV, "admin_labels": LABELS, "protected_tables": PROTECTED}
 
 
 def report_data(days):
     now = utcnow()
     start = datetime.combine(now.date() - timedelta(days=days-1), datetime.min.time())
     orders = Order.query.filter(Order.created_at >= start, Order.created_at <= now).all()
-    valid = [o for o in orders if o.status != "cancelled"]
-    completed = [o for o in valid if o.status == "completed"]
-    revenue = sum(o.total for o in completed)
-    daily = {(start.date() + timedelta(days=i)): 0.0 for i in range(days)}
-    popular = Counter()
+    completed = [o for o in orders if o.status == 'completed']
+    from ..operations import paid_total
+    payments = Payment.query.filter(Payment.status=='paid', Payment.created_at>=start, Payment.created_at<=now).all()
+    daily = {start.date()+timedelta(days=i):0.0 for i in range(days)}
+    for p in payments: daily[p.created_at.date()] += p.amount
+    revenue = sum(p.amount for p in payments)
+    popular=Counter()
     for o in completed:
-        daily[o.created_at.date()] += o.total
-        for line in o.items:
-            popular[line.name] += line.quantity
-    peak = max(daily.values(), default=0) or 1
-    statuses = Counter(o.status for o in orders)
-    
-    # Calculate Today's Stats
-    today_start = datetime.combine(now.date(), datetime.min.time())
-    today_orders = [o for o in orders if o.created_at >= today_start]
-    today_rev = sum(o.total for o in today_orders if o.status != "cancelled") or 987.00
-    
-    return {
-        "days": days,
-        "revenue": revenue if revenue > 0 else 3577.0,
-        "orders": len(orders) if len(orders) > 0 else 853,
-        "average": revenue / len(completed) if completed else 76.0,
-        "active": Order.query.filter(Order.status.in_(["placed", "preparing", "ready", "out_for_delivery"])).count() or 36,
-        "completed": len(completed) if completed else 165,
-        "customers": User.query.join(Role).filter(Role.name != "admin").count(),
-        "open_messages": ContactMessage.query.filter_by(is_resolved=False).count(),
-        "reservations": Reservation.query.filter(Reservation.reserved_for >= now).count(),
-        "available_items": MenuItem.query.filter_by(is_available=True).count(),
-        "bars": [(d.strftime("%d %b"), amount, round(amount / peak * 100)) for d, amount in daily.items()],
-        "popular": popular.most_common(5) if popular else [("Chicken Karahi", 94), ("Margherita Pizza", 82), ("Beef Burger", 77), ("French Fries", 33)],
-        "statuses": [(s, statuses[s]) for s in ORDER_STATUSES],
-        "today_revenue": today_rev,
-        "today_trend": "+22.1%",
-        "orders_trend": "+17.1%",
-        "active_trend": "-19%"
-    }
+        for line in o.items: popular[line.name] += line.quantity
+    peak=max(daily.values(),default=0) or 1
+    statuses=Counter(o.status for o in orders)
+    return dict(days=days,revenue=revenue,orders=len(orders),average=sum(o.total for o in completed)/len(completed) if completed else 0,active=Order.query.filter(Order.status.in_(['placed','preparing','ready','out_for_delivery'])).count(),completed=len(completed),customers=User.query.join(Role).filter(Role.name=='customer').count(),open_messages=ContactMessage.query.filter_by(is_resolved=False).count(),reservations=Reservation.query.filter(Reservation.reserved_for>=now,Reservation.status=='confirmed').count(),available_items=MenuItem.query.filter_by(is_available=True).count(),bars=[(d.strftime('%d %b'),v,round(v/peak*100)) for d,v in daily.items()],popular=popular.most_common(5),statuses=[(s,statuses[s]) for s in ORDER_STATUSES],today_revenue=daily[now.date()])
 
 
 def selected_days():
@@ -181,52 +161,9 @@ def selected_days():
 @bp.route("/")
 @admin_required
 def dashboard():
-    stats = report_data(selected_days())
-    recent = Order.query.order_by(Order.created_at.desc()).limit(8).all()
-    
-    # Staff on Duty (matching reference image)
-    staff_on_duty = StaffMember.query.filter_by(shift_status="On Duty").limit(5).all()
-    if not staff_on_duty:
-        staff_on_duty = StaffMember.query.limit(5).all()
-        
-    # Monthly Income chart series (matching the reference design graph)
-    monthly_bars = [
-        ("Jan", 18500, 48),
-        ("Feb", 22000, 56),
-        ("Mar", 29000, 74),
-        ("Apr", 25000, 64),
-        ("May", 31000, 79),
-        ("Jun", 39000, 100),
-        ("Jul", 23000, 59),
-        ("Aug", 28000, 72)
-    ]
-    
-    # Top bestselling categories with progress bars
-    top_categories = [
-        {"name": "Chicken Wings", "pct": 94, "img": "chicken-karahi.jpg"},
-        {"name": "Margherita Pizza", "pct": 82, "img": "paneer-karahi.jpg"},
-        {"name": "Beef Burger", "pct": 77, "img": "chicken-tikka.jpg"},
-        {"name": "French Fries", "pct": 33, "img": "samosa-chaat.png"}
-    ]
-    
-    pos_overview = {
-        "total_bills": stats["completed"] or 165,
-        "avg_value": round(stats["average"], 2) or 76.00,
-        "peak_hour": "9.00 AM",
-        "total_payment": 3577.00,
-        "card_pct": 20,
-        "online_pct": 10,
-        "cash_pct": 70
-    }
-    
-    return render_template("admin/dashboard.html",
-                           stats=stats,
-                           recent=recent,
-                           staff_on_duty=staff_on_duty,
-                           monthly_bars=monthly_bars,
-                           top_categories=top_categories,
-                           pos=pos_overview,
-                           statuses=ORDER_STATUSES)
+    stats=report_data(selected_days())
+    recent=Order.query.order_by(Order.created_at.desc()).limit(8).all()
+    return render_template('admin/dashboard.html',stats=stats,recent=recent,staff_on_duty=StaffMember.query.filter_by(shift_status='On Duty').limit(8).all(),statuses=ORDER_STATUSES)
 
 
 # ---------- Staff & HR Management Hub ----------
@@ -241,8 +178,11 @@ def staff():
             role = request.form.get("role", "").strip()
             phone = request.form.get("phone", "").strip()
             email = request.form.get("email", "").strip()
-            salary = float(request.form.get("salary", 2500) or 2500)
-            if name and role:
+            try:
+                salary = float(request.form.get("salary", 2500) or 2500)
+            except ValueError:
+                salary = -1
+            if name and len(name) <= 80 and role and len(role) <= 50 and 0 <= salary < 100000000 and (not email or valid_email(email)) and (not phone or valid_phone(phone)):
                 sm = StaffMember(name=name, role=role, phone=phone, email=email,
                                  salary_monthly=salary, shift_status="On Duty",
                                  shift_hours_done=0.0, shift_hours_total=10.0)
@@ -250,7 +190,7 @@ def staff():
                 db.session.commit()
                 flash(f"Staff member {name} added successfully.", "success")
             else:
-                flash("Name and role are required.", "error")
+                flash("Enter valid staff details and a non-negative salary.", "error")
         elif form_type == "new_leave":
             staff_id = int(request.form.get("staff_id", 0))
             l_type = request.form.get("leave_type", "Sick Leave")
@@ -319,7 +259,7 @@ def kitchen():
     active_orders = Order.query.filter(Order.status.in_(["placed", "preparing", "ready"]))\
         .order_by(Order.created_at.asc()).all()
     lanes = {s: [o for o in active_orders if o.status == s] for s in ["placed", "preparing", "ready"]}
-    return render_template("admin/kitchen.html", lanes=lanes)
+    return render_template("admin/kitchen.html", stages=lanes.items())
 
 
 # ---------- Table Bookings & Floorplan ----------
@@ -387,12 +327,12 @@ def order_status(order_id):
     status = request.form.get("status")
     if status not in ORDER_STATUSES:
         abort(400)
-    if status != order.status:
-        order.status = status
-        order.history.append(OrderStatusHistory(status=status))
-        db.session.commit()
-        flash(f"Order #{order.id} is now {status.replace('_', ' ')}.", "success")
-    return redirect(request.referrer or url_for("admin.dashboard"))
+    from ..operations import transition, BusinessError
+    try:
+        transition(order,status,current_user()); db.session.commit(); flash('Order updated.','success')
+    except BusinessError as exc:
+        db.session.rollback(); flash(str(exc),'error')
+    return redirect(url_for('admin.orders'))
 
 
 # ---------- Generic CRUD for All 50 Tables ----------
@@ -421,6 +361,7 @@ def row_key(model, args):
 @bp.route("/t/<table>/new", methods=["GET", "POST"])
 @admin_required
 def create_row(table):
+    if table in PROTECTED: abort(403)
     model = get_model(table)
     fields = describe_fields(model)
     errors, values = {}, {}
@@ -450,6 +391,7 @@ def create_row(table):
 @bp.route("/t/<table>/edit", methods=["GET", "POST"])
 @admin_required
 def edit_row(table):
+    if table in PROTECTED: abort(403)
     model = get_model(table)
     obj = row_key(model, request.args)
     fields = [f for f in describe_fields(model) if not f["col"].primary_key]
@@ -481,6 +423,7 @@ def edit_row(table):
 @bp.route("/t/<table>/delete", methods=["POST"])
 @admin_required
 def delete_row(table):
+    if table in PROTECTED: abort(403)
     check_csrf()
     model = get_model(table)
     obj = row_key(model, request.form)
@@ -492,3 +435,21 @@ def delete_row(table):
         db.session.rollback()
         flash("Can't delete: other records still depend on this one.", "error")
     return redirect(url_for("admin.list_rows", table=table))
+
+
+@bp.route("/staff/messages", methods=["GET", "POST"])
+@admin_required
+def staff_messages():
+    if request.method == "POST":
+        check_csrf()
+        staff = db.session.get(StaffMember, request.form.get("staff_id", type=int) or 0)
+        subject, body = request.form.get("subject", "").strip(), request.form.get("body", "").strip()
+        if not staff or not staff.user_id or not 1 <= len(subject) <= 120 or not 1 <= len(body) <= 2000:
+            flash("Select a staff member with a linked account and enter a valid subject and message.", "error")
+        else:
+            db.session.add(StaffMessage(staff_id=staff.id, sender_id=current_user().id, subject=subject, body=body))
+            db.session.commit()
+            flash("Message delivered to the staff inbox.", "success")
+        return redirect(url_for("admin.staff_messages"))
+    staff = StaffMember.query.order_by(StaffMember.name).all()
+    return render_template("admin/staff_messages.html", staff=staff, selected=request.args.get("staff_id", type=int), messages=StaffMessage.query.order_by(StaffMessage.created_at.desc()).limit(100).all())

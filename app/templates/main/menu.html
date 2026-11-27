@@ -1,27 +1,10 @@
-{% extends "base.html" %}
-{% from "partials/_macros.html" import item_card %}
-{% from "partials/_icons.html" import icon %}
-{% block title %}Menu{% endblock %}
-{% block content %}
-{% include "partials/_store_header.html" %}
-<section class="menu-heading" aria-label="Find a dish">
-  <h2>Our Menu</h2>
-  <form class="filters" method="get" action="{{ url_for('main.menu') }}" role="search">
-    <div class="search-field"><input type="search" name="q" value="{{ q }}" placeholder="Search menu" aria-label="Search dishes"><button type="submit" class="search-submit" aria-label="Search menu">{{ icon('search', 21) }}</button></div>
-    <select name="tag" aria-label="Filter by tag"><option value="">All dishes</option>{% for t in tags %}<option value="{{ t.id }}" {{ 'selected' if active_tag == t.id }}>{{ t.name }}</option>{% endfor %}</select>
-    <button class="btn small filter-apply">Apply</button>
-  </form>
-</section>
-{% if categories %}
-<nav class="category-bar" aria-label="Menu categories"><span class="category-symbol">{{ icon('list', 23) }}</span><div class="category-tabs">
-  {% for cat, items in categories %}<a href="#{{ cat.slug }}" class="category-tab {{ 'active' if loop.first }}"{% if loop.first %} aria-current="location"{% endif %}>{{ cat.name }}</a>{% endfor %}
-</div></nav>
-{% endif %}
-{% if q or active_tag %}<div class="search-results"><p>{{ count }} result{{ '' if count == 1 else 's' }}{% if q %} for ?{{ q }}?{% endif %}</p><a href="{{ url_for('main.menu') }}">Clear filters</a></div>{% endif %}
-{% for p in promos %}
-<details class="promo"><summary><span class="offer-label">SPECIAL OFFER</span> {{ p.title }} <span class="offer-more">View offer +</span></summary><div class="offer-body"><p>{{ p.description }}{% if p.ends_on %} Ends {{ p.ends_on.strftime('%b %d, %Y') }}.{% endif %}</p>{% for pi in p.items %}<p><a href="{{ url_for('main.item_detail', item_id=pi.item.id) }}">{{ pi.item.name }}</a>: <strong>${{ '%.2f'|format(pi.promo_price) }}</strong> <s>${{ '%.2f'|format(pi.item.price) }}</s></p>{% endfor %}</div></details>
-{% endfor %}
-{% for cat, items in categories %}
-<section id="{{ cat.slug }}" class="menu-section" aria-labelledby="heading-{{ cat.slug }}"><h2 id="heading-{{ cat.slug }}">{{ cat.name }}</h2><div class="items">{% for item in items %}{{ item_card(item) }}{% endfor %}</div></section>
-{% else %}<div class="empty-state">{{ icon('search', 32) }}<h2>No dishes found</h2><p>Try another search or browse the full menu.</p><a class="btn" href="{{ url_for('main.menu') }}">Show the full menu</a></div>{% endfor %}
+{% extends 'base.html' %}{% from 'partials/_premium.html' import dish with context %}{% from 'partials/_macros.html' import csrf %}{% block title %}The menu{% if promos %}<section class="offers-band"><div><span class="overline">A LITTLE EXTRA</span><h2>House specials.</h2></div><div class="offers-list">{% for p in promos %}<details><summary>{{ p.title }} <span>+</span></summary><p>{{ p.description }}{% if p.ends_on %} · Until {{ p.ends_on.strftime('%d %b') }}{% endif %}</p>{% for pi in p.items %}<p><a href="{{ url_for('main.item_detail',item_id=pi.item.id) }}">{{ pi.item.name }}</a> · {{ currency_symbol }}{{ '%.2f'|format(pi.promo_price) }} offer price</p>{% endfor %}</details>{% endfor %}</div></section>{% endif %}
+
+{% endblock %}{% block content %}
+<header class="menu-compact"><div><span class="overline">KARAHI HOUSE · MADE FRESH</span><h1>Explore our <em>menu.</em></h1><p>{{ count }} {{ 'dish' if count == 1 else 'dishes' }} available · Freshly prepared to order</p></div><a class="text-arrow" href="{{ url_for('main.reserve') }}">Reserve a table ↗</a></header>
+<section class="menu-tools" id="menu-collection"><div class="menu-order-row"><span class="muted">Choose how to enjoy your meal</span><form class="segmented" method="post" action="{{ url_for('main.set_order_type') }}">{{ csrf() }}<input type="hidden" name="next" value="{{ request.full_path.rstrip('?') }}"><button name="order_type" value="pickup" class="{{ 'on' if order_type=='pickup' }}">Pickup</button><button name="order_type" value="delivery" class="{{ 'on' if order_type=='delivery' }}">Delivery</button></form></div><form class="premium-search" method="get" action="{{ url_for('main.menu') }}"><label class="field"><span>Find a dish</span><input name="q" type="search" value="{{ q }}" placeholder="Search by dish or description"></label><label class="field"><span>Dietary preference</span><select name="tag"><option value="">All dishes</option>{% for t in tags %}<option value="{{ t.id }}" {{ 'selected' if active_tag==t.id }}>{{ t.name }}</option>{% endfor %}</select></label><button class="brand-button dark">Search ↗</button>{% if q or active_tag %}<a href="{{ url_for('main.menu') }}">Clear</a>{% endif %}</form>{% if q or active_tag %}<p>{{ count }} matching dishes</p>{% endif %}</section>
+{% if categories %}<nav class="category-bar premium-categories" aria-label="Menu categories"><div class="category-tabs">{% for cat,items in categories %}<a href="#{{ cat.slug }}" class="category-tab {{ 'active' if loop.first }}">{{ cat.name }}</a>{% endfor %}</div></nav>{% endif %}
+{% for cat,items in categories %}<section id="{{ cat.slug }}" class="menu-section editorial-section"><div class="section-intro"><div><span class="overline">COLLECTION {{ '%02d'|format(loop.index) }}</span><h2>{{ cat.name }}</h2></div><span class="muted">{{ items|length }} dishes</span></div><div class="signature-grid">{% for item in items %}{{ dish(item,cat.name) }}{% endfor %}</div></section>{% else %}<section class="premium-empty">{% if q or active_tag %}<h2>No matching dishes.</h2><p>Try another search or clear your filters.</p><a class="brand-button dark" href="{{ url_for('main.menu') }}">Clear filters</a>{% else %}<h2>Our menu is currently unavailable.</h2><p>Check back soon or contact our restaurant team.</p>{% if demo_mode %}<p>Demo setup: check that the selected database contains available menu items.</p>{% endif %}<a class="brand-button dark" href="{{ url_for('main.contact') }}">Contact us</a>{% endif %}</section>{% endfor %}
+{% if promos %}<section class="offers-band"><div><span class="overline">A LITTLE EXTRA</span><h2>House specials.</h2></div><div class="offers-list">{% for p in promos %}<details><summary>{{ p.title }} <span>+</span></summary><p>{{ p.description }}{% if p.ends_on %} · Until {{ p.ends_on.strftime('%d %b') }}{% endif %}</p>{% for pi in p.items %}<p><a href="{{ url_for('main.item_detail',item_id=pi.item.id) }}">{{ pi.item.name }}</a> · {{ currency_symbol }}{{ '%.2f'|format(pi.promo_price) }} offer price</p>{% endfor %}</details>{% endfor %}</div></section>{% endif %}
+
 {% endblock %}

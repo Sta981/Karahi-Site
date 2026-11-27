@@ -1,21 +1,22 @@
 {% extends "base.html" %}
 {% from "partials/_macros.html" import csrf, field %}
+{% from 'partials/_premium.html' import heading,account_nav,dish with context %}
 {% block title %}My account{% endblock %}
 {% block content %}
-<h1>My account</h1>
-<div class="two-col">
-  <section>
+{{ heading('MAKE IT YOURS','Your profile.','Manage your details, delivery addresses and saved favourites.') }}{{ account_nav('profile') }}
+<div class="premium-split">
+  <section class="premium-panel item-info">
     <h2>Details</h2>
     <form method="post" class="stack" novalidate>
       {{ csrf() }}
       {{ field('name', 'Name', {'name': user.name}, errors) }}
       {{ field('phone', 'Phone', {'phone': user.phone or ''}, errors, type='tel', required=false) }}
       <p class="muted">{{ user.email }}{% if user.loyalty %} &middot; {{ user.loyalty.points }} loyalty points{% endif %}</p>
-      <button class="btn small">Save changes</button>
+      <button class="brand-button dark">Save changes</button>
     </form>
     <p><a href="{{ url_for('shop.orders') }}">View my orders</a></p>
   </section>
-  <section>
+  <section class="premium-panel item-info">
     <h2>Saved addresses</h2>
     <ul class="plain">
       {% for a in user.addresses %}
@@ -28,13 +29,13 @@
       <div class="field"><label for="label">Label</label><input id="label" name="label" value="Home" maxlength="30"></div>
       <div class="field"><label for="a-street">Street</label><input id="a-street" name="street" required></div>
       <div class="field"><label for="a-zip">ZIP code</label><input id="a-zip" name="zip_code" pattern="\d{5}" required></div>
-      <button class="btn small ghost">Save address</button>
+      <button class="brand-button soft">Save address</button>
     </form>
   </section>
 </div>
-<section>
-  <h2>Favorites</h2>
-  {% for f in favorites %}<p><a href="{{ url_for('main.item_detail', item_id=f.item.id) }}">{{ f.item.name }}</a></p>
-  {% else %}<p class="muted">Save dishes from their page to find them here.</p>{% endfor %}
+<section class="premium-panel item-info">
+  <h2>Saved favourites.</h2><div class="signature-grid">
+  {% for f in favorites %}{{ dish(f.item,'Saved favourite') }}
+  {% else %}<p class="muted">Save dishes from their page to find them here.</p>{% endfor %}</div>
 </section>
 {% endblock %}

@@ -1,16 +1,4 @@
-{% extends "base.html" %}
-{% from "partials/_macros.html" import csrf, field %}
-{% block title %}Reserve a table{% endblock %}
-{% block content %}
-<section class="narrow">
-  <h1>Reserve a table</h1>
-  <form method="post" class="stack" novalidate>
-    {{ csrf() }}
-    {{ field('guest_name', 'Name for the booking', form, errors, autocomplete='name') }}
-    {{ field('guest_phone', 'Phone', form, errors, type='tel', autocomplete='tel') }}
-    {{ field('party_size', 'Party size', form, errors, type='number', hint='Up to 12 guests') }}
-    {{ field('when', 'Date and time', form, errors, type='datetime-local') }}
-    <button class="btn">Book table</button>
-  </form>
-</section>
+{% extends 'base.html' %}{% from 'partials/_macros.html' import csrf,field %}{% block title %}Reserve a table{% endblock %}{% block content %}
+<section class="chapter-hero reservation-hero"><div><span class="overline">MAKE IT AN OCCASION</span><h1>A seat at<br><em>our table.</em></h1><p>A family celebration, a dinner for two or an evening with friends. Let us prepare the table.</p></div></section>
+<section class="editorial-section booking-layout" id="booking"><aside class="booking-aside"><span class="overline">YOUR DINING EXPERIENCE</span><h2>Good company.<br>Great food.</h2><p>Reservations are subject to available tables. Each booking is allocated a two-hour dining window.</p><div class="booking-note"><b>01 · Guests</b><span>Choose a party size from 1 to 12.</span></div><div class="booking-note"><b>02 · Date & time</b><span>Select your preferred future dining time.</span></div><div class="booking-note"><b>03 · Confirm</b><span>We'll check table availability and confirm your reservation.</span></div>{% if store %}<p class="muted">{{ store.street }}, {{ store.city }}</p>{% endif %}</aside><form class="premium-panel booking-form" method="post" novalidate data-booking>{{ csrf() }}<span class="overline">TABLE RESERVATIONS</span><h2>Plan your visit.</h2><div class="booking-steps" aria-label="Booking steps"><span data-step-indicator="0">01 Guests</span><span data-step-indicator="1">02 Date & time</span><span data-step-indicator="2">03 Details</span></div>{% if errors %}<div class="flash error" role="alert">Please check your booking details below.{% for name,msg in errors.items() %}<p>{{ msg }}</p>{% endfor %}</div>{% endif %}<div data-book-step="0"><label class="field"><span>Number of guests</span><select name="party_size" required id="party_size">{% for n in range(1,13) %}<option value="{{ n }}" {{ 'selected' if form.get('party_size','2')|int==n }}>{{ n }} {{ 'guest' if n==1 else 'guests' }}</option>{% endfor %}</select></label><p class="muted">We will assign a suitable available table.</p></div><div data-book-step="1">{{ field('when','Preferred date and time',form,errors,type='datetime-local') }}<p class="muted">Availability is checked when you submit.</p></div><div data-book-step="2">{{ field('guest_name','Name for the booking',form,errors,autocomplete='name') }}{{ field('guest_phone','Contact phone',form,errors,type='tel',autocomplete='tel') }}<div class="booking-preview" aria-live="polite" data-book-preview></div></div><div class="booking-buttons"><button type="button" class="brand-button soft" data-book-back hidden>← Back</button><button type="button" class="brand-button dark" data-book-next hidden>Continue →</button><button type="submit" class="brand-button dark" data-book-submit>Confirm reservation ↗</button></div></form></section>
 {% endblock %}

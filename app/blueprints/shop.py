@@ -53,7 +53,7 @@ def cart_add(item_id):
     db.session.add(line)
     db.session.commit()
     flash(f"Added {qty} × {item.name} to your cart.", "success")
-    return redirect(url_for("main.menu"))
+    return redirect(url_for("main.menu", bag="open"))
 
 
 @bp.route("/cart/update/<int:line_id>", methods=["POST"])
@@ -94,7 +94,7 @@ def _discount(coupon_code, subtotal):
     if coupon.expires_on and coupon.expires_on < date.today():
         return None, 0.0, "That coupon has expired."
     if subtotal < (coupon.min_subtotal or 0):
-        return None, 0.0, f"Coupon needs a ${coupon.min_subtotal:.2f} minimum order."
+        return None, 0.0, f"Coupon needs a {coupon.min_subtotal:.2f} minimum order."
     return coupon, round(subtotal * coupon.percent_off / 100, 2), None
 
 
@@ -149,20 +149,16 @@ def checkout():
                 order.items.append(oi)
             order.history.append(OrderStatusHistory(status="placed"))
             order.payment = Payment(method=method, amount=total,
-                                    status="paid" if method.name != "Pay at counter" else "pending")
+                                    status="pending")
             if order_type == "delivery":
                 order.delivery = Delivery(zone=zone, street=form["street"], zip_code=form["zip_code"])
             db.session.add(order)
             db.session.flush()
             if coupon:
                 db.session.add(CouponUsage(coupon=coupon, user_id=order.user_id, order_id=order.id))
-            if user and user.loyalty:
-                earned = int(total)
-                user.loyalty.points += earned
-                db.session.add(LoyaltyTransaction(account=user.loyalty, order_id=order.id,
-                                                  points=earned, reason=f"Order #{order.id}"))
-                db.session.add(Notification(user_id=user.id, message=f"Order #{order.id} placed. +{earned} points."))
             db.session.delete(cart)
+            from ..operations import notify_roles
+            notify_roles(("chef",), f"New online kitchen order #{order.id}.")
             db.session.commit()
             flash("Order placed. We're firing up the karahi.", "success")
             return redirect(url_for("shop.order_detail", order_id=order.id, token=_token(order)))
@@ -173,7 +169,11 @@ def checkout():
 
 def _token(order):
     """Lets guest customers view their own confirmation page."""
-    return f"{order.id * 7919 + 13:x}"
+    from flask import current_app
+    import hmac, hashlib
+    key = current_app.secret_key
+    if isinstance(key,str): key=key.encode()
+    return hmac.new(key, f"guest-order:{order.id}".encode(), hashlib.sha256).hexdigest()
 
 
 # ---------- Orders ----------
@@ -200,11 +200,11 @@ def order_detail(order_id):
 def order_cancel(order_id):
     check_csrf()
     order = Order.query.filter_by(id=order_id, user_id=current_user().id).first() or abort(404)
-    if order.status != "placed":
+    if order.status != "placed" or any(p.status == "paid" for p in order.payments):
         flash("This order is already being prepared and can't be cancelled.", "warning")
     else:
         order.status = "cancelled"
-        order.history.append(OrderStatusHistory(status="cancelled"))
+        order.history.append(OrderStatusHistory(status="cancelled", actor_id=current_user().id))
         db.session.commit()
         flash("Order cancelled.", "info")
     return redirect(url_for("shop.order_detail", order_id=order.id))

@@ -3,7 +3,7 @@
 {% block page_title %}Staff & Operations HR{% endblock %}
 
 {% block content %}
-<div class="staff-dashboard">
+<div class="staff-dashboard"><div class="content-card" style="margin-bottom:20px"><div class="card-header-flex"><div><h3>Team communication</h3><p class="muted">Reach your chefs, servers and managers. Link a staff profile to a user account before sending an internal message.</p></div><a class="btn" href="{{ url_for('admin.staff_messages') }}">Open team inbox →</a></div></div>
 
   <!-- TOP KPI ROW -->
   <div class="staff-kpi-row">
@@ -24,7 +24,7 @@
     </div>
     <div class="kpi-card">
       <span class="kpi-title">Monthly Payroll Budget</span>
-      <h2 class="kpi-number">${{ '%.2f'|format(total_payroll) }}</h2>
+      <h2 class="kpi-number">{{ currency_symbol }}{{ '%.2f'|format(total_payroll) }}</h2>
       <small>Total Active Salaries</small>
     </div>
   </div>
@@ -108,14 +108,14 @@
           <div>
             <h4 class="staff-name">{{ s.name }}</h4>
             <span class="role-badge">{{ s.role }}</span>
-            <div class="staff-contact-line">📞 {{ s.phone or '415-555-0100' }}</div>
+            <div class="staff-contact-line">📞 {{ s.phone or 'Not provided' }}</div>
           </div>
         </div>
 
-        <div class="staff-card-stats">
+        <div class="staff-contact-actions">{% if s.phone and not demo_mode %}<a href="tel:{{ s.phone }}">Call</a>{% endif %}{% if s.email and not demo_mode %}<a href="mailto:{{ s.email }}">Email</a>{% endif %}<a href="{{ url_for('admin.staff_messages',staff_id=s.id) }}">Message</a></div><div class="staff-card-stats">
           <div>
             <small>Monthly Salary</small>
-            <strong>${{ '%.2f'|format(s.salary_monthly) }}</strong>
+            <strong>{{ currency_symbol }}{{ '%.2f'|format(s.salary_monthly) }}</strong>
           </div>
           <div>
             <small>Shift Progress</small>
@@ -172,10 +172,10 @@
           <tr>
             <td><strong>{{ p.staff.name }}</strong> ({{ p.staff.role }})</td>
             <td>{{ p.month }} {{ p.year }}</td>
-            <td>${{ '%.2f'|format(p.base_salary) }}</td>
-            <td style="color:#247a5b;">+${{ '%.2f'|format(p.bonus) }}</td>
-            <td style="color:#ac3a35;">-${{ '%.2f'|format(p.deductions) }}</td>
-            <td><strong>${{ '%.2f'|format(p.net_salary) }}</strong></td>
+            <td>{{ currency_symbol }}{{ '%.2f'|format(p.base_salary) }}</td>
+            <td style="color:#247a5b;">+{{ currency_symbol }}{{ '%.2f'|format(p.bonus) }}</td>
+            <td style="color:#ac3a35;">-{{ currency_symbol }}{{ '%.2f'|format(p.deductions) }}</td>
+            <td><strong>{{ currency_symbol }}{{ '%.2f'|format(p.net_salary) }}</strong></td>
             <td>
               <span class="status-badge status-{{ p.payment_status|lower }}">{{ p.payment_status }}</span>
             </td>
@@ -209,7 +209,7 @@
       <div class="form-field">
         <label>Role / Position *</label>
         <select name="role" required>
-          <option value="Head Chef">Head Chef</option>
+          <option value="Manager">Restaurant Manager</option><option value="Head Chef">Head Chef</option>
           <option value="Chef">Chef</option>
           <option value="Cooker">Cooker</option>
           <option value="Server">Server / Waiter</option>
@@ -221,10 +221,11 @@
       </div>
       <div class="form-field">
         <label>Phone Number</label>
-        <input type="text" name="phone" placeholder="415-555-0210">
+        <input type="tel" name="phone" placeholder="Phone number">
+      </div><div class="form-field"><label>Email address</label><input type="email" name="email" placeholder="name@example.com">
       </div>
       <div class="form-field">
-        <label>Monthly Salary ($)</label>
+        <label>Monthly Salary ({{ currency_code }})</label>
         <input type="number" step="50" name="salary" value="3000">
       </div>
       <div class="dialog-actions">

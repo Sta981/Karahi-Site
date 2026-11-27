@@ -1,16 +1,1 @@
-{% extends "base.html" %}
-{% from "partials/_macros.html" import csrf %}
-{% block title %}Log in{% endblock %}
-{% block content %}
-<section class="narrow">
-  <h1>Log in</h1>
-  {% if error %}<p class="flash error">{{ error }}</p>{% endif %}
-  <form method="post" class="stack">
-    {{ csrf() }}
-    <div class="field"><label for="email">Email</label><input id="email" name="email" type="email" value="{{ email }}" required autocomplete="email"></div>
-    <div class="field"><label for="password">Password</label><input id="password" name="password" type="password" required autocomplete="current-password"></div>
-    <button class="btn">Log in</button>
-  </form>
-  <p>New here? <a href="{{ url_for('auth.register') }}">Create an account</a>.</p>
-</section>
-{% endblock %}
+{% extends 'auth/layout.html' %}{% from 'partials/_macros.html' import csrf %}{% block title %}Welcome back{% endblock %}{% block content %}<h1>Welcome back.</h1><p class="auth-description">Sign in to continue to your dining account.</p>{% if error %}<p class="flash error" role="alert">{{ error }}</p>{% endif %}<form method="post" class="stack">{{ csrf() }}<div class="field"><label for="email">Email address</label><input id="email" name="email" type="email" value="{{ email }}" required autocomplete="email" placeholder="you@example.com"></div><div class="field"><label for="password">Password</label><div class="password-wrap"><input id="password" name="password" type="password" required autocomplete="current-password" placeholder="Enter your password"><button type="button" data-password="password" aria-pressed="false">Show</button></div></div><button class="brand-button dark auth-submit">Sign in <span>↗</span></button></form><p class="auth-bottom">New to Karahi House? <a href="{{ url_for('auth.register') }}">Create an account</a></p><div class="auth-hint"><img src="{{ url_for('static',filename='img/restroiq-mark.svg') }}" alt=""><div><strong>RestroIQ staff access</strong><small><a href="{{ url_for('auth.staff_login') }}">Open the staff login →</a></small></div></div>{% endblock %}

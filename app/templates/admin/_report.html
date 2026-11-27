@@ -1,8 +1,8 @@
 {% macro report(stats) %}
 <div class="kpi-banner-row" style="margin-bottom:20px;">
   <div class="kpi-card">
-    <span class="kpi-title">Completed Sales</span>
-    <h2 class="kpi-number">${{ '%.2f'|format(stats.revenue) }}</h2>
+    <span class="kpi-title">Recorded Payments</span>
+    <h2 class="kpi-number">{{ currency_symbol }}{{ '%.2f'|format(stats.revenue) }}</h2>
     <small>{{ stats.completed }} Completed Orders · {{ stats.days }} Days</small>
   </div>
   <div class="kpi-card">
@@ -17,7 +17,7 @@
   </div>
   <div class="kpi-card">
     <span class="kpi-title">Average Order Value</span>
-    <h2 class="kpi-number">${{ '%.2f'|format(stats.average) }}</h2>
+    <h2 class="kpi-number">{{ currency_symbol }}{{ '%.2f'|format(stats.average) }}</h2>
     <small>Per completed transaction</small>
   </div>
 </div>
@@ -27,14 +27,14 @@
     <div class="card-header-flex">
       <div>
         <h3 class="card-section-title">Daily Sales Performance</h3>
-        <p class="muted">Completed order revenue per day in USD</p>
+        <p class="muted">Recorded paid transactions per day in {{ currency_code }}</p>
       </div>
       <span class="chip">{{ stats.days }} Day Window</span>
     </div>
     <div class="bar-chart-visual">
       <div class="bars-container" style="height:180px;">
         {% for day, amount, height in stats.bars %}
-        <div class="bar-item" title="{{ day }}: ${{ '%.2f'|format(amount) }}">
+        <div class="bar-item" title="{{ day }}: {{ currency_symbol }}{{ '%.2f'|format(amount) }}">
           <div class="bar-track">
             <div class="bar-fill" style="height:{{ height }}%;"></div>
           </div>

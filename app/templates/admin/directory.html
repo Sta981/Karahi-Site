@@ -1,6 +1,6 @@
 {% extends 'admin/base.html' %}
 {% block title %}Master Data Directory{% endblock %}
-{% block page_title %}Master Schema Directory (50 Tables){% endblock %}
+{% block page_title %}Master Schema Directory{% endblock %}
 
 {% block content %}
 <div class="content-card" style="margin-bottom:20px;">
@@ -8,7 +8,7 @@
     <div>
       <span class="card-label-sub">RELATIONAL DATABASE SCHEMA</span>
       <h2 style="font-size:20px; font-weight:700; margin-top:4px;">Master Data Directory & Entity Explorer</h2>
-      <p class="muted">Explore and manage all 50 interconnected relational models with complete CRUD operations.</p>
+      <p class="muted">Explore {{ tables|length }} relational models; transactional records are protected.</p>
     </div>
   </div>
 </div>

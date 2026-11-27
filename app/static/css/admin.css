@@ -1246,3 +1246,11 @@ button { cursor: pointer; }
   .kpi-banner-row, .staff-kpi-row { grid-template-columns: 1fr; }
   .search-box { display: none; }
 }
+/* Private team messaging and contact shortcuts */
+.staff-contact-actions{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}.staff-contact-actions a{border:1px solid currentColor;border-radius:7px;padding:6px 10px;font-size:12px;text-decoration:none}.team-inbox-layout{display:grid;grid-template-columns:minmax(280px,.85fr) minmax(0,1.15fr);gap:20px;align-items:start}.team-inbox-layout h2{font-size:20px;margin:0 0 12px}.team-inbox-layout textarea,.team-inbox-layout select,.team-inbox-layout input{width:100%}.team-message{border-bottom:1px solid #8883;padding:15px 0}.team-message h3{margin:5px 0}.team-message p{white-space:pre-wrap;overflow-wrap:anywhere}.team-reply{background:#39835a15;border-left:3px solid #39835a;padding:10px 12px;border-radius:5px}.team-reply p{margin:4px 0}.team-message:last-child{border-bottom:0}@media(max-width:850px){.team-inbox-layout{grid-template-columns:1fr}}
+
+/* Fixed sidebar shell, independently scrollable navigation. */
+.sidebar {overflow:hidden;}
+.sidebar-brand-row,.sidebar-footer,.sidebar .upgrade-card {flex-shrink:0;}
+.sidebar-nav {flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; padding-right:4px;}
+.sidebar-nav>* {flex-shrink:0;}

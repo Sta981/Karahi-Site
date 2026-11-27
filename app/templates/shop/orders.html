@@ -1,17 +1,1 @@
-{% extends "base.html" %}
-{% block title %}My orders{% endblock %}
-{% block content %}
-<h1>My orders</h1>
-{% if orders %}
-<table class="table">
-  <thead><tr><th>Order</th><th>Placed</th><th>Type</th><th>Status</th><th class="num">Total</th></tr></thead>
-  <tbody>
-  {% for o in orders %}
-  <tr><td><a href="{{ url_for('shop.order_detail', order_id=o.id) }}">#{{ o.id }}</a></td>
-      <td>{{ o.created_at.strftime('%b %d, %I:%M %p') }}</td><td>{{ o.order_type }}</td>
-      <td><span class="badge">{{ o.status.replace('_', ' ') }}</span></td><td class="num">${{ '%.2f'|format(o.total) }}</td></tr>
-  {% endfor %}
-  </tbody>
-</table>
-{% else %}<p>No orders yet. <a href="{{ url_for('main.menu') }}">Start with the menu</a>.</p>{% endif %}
-{% endblock %}
+{% extends 'base.html' %}{% from 'partials/_premium.html' import heading,order_card,account_nav with context %}{% block title %}Your orders{% endblock %}{% block content %}{{ heading('YOUR DINING JOURNEY','Your orders.','Follow your latest order and rediscover past favourites.') }}{{ account_nav('orders') }}<section class="editorial-section account-section"><div class="section-intro"><div><span class="overline">ORDER HISTORY</span><h2>Every delicious moment.</h2></div><a class="brand-button dark" href="{{ url_for('main.menu') }}">Order something new ↗</a></div><div class="order-grid">{% for o in orders %}{{ order_card(o) }}{% else %}<div class="premium-empty"><h3>Your first meal awaits.</h3><a class="brand-button dark" href="{{ url_for('main.menu') }}">Explore menu</a></div>{% endfor %}</div></section>{% endblock %}

@@ -9,11 +9,11 @@
     <div>
       <span class="card-label-sub">DATABASE TABLE: {{ table|upper }}</span>
       <h2 style="font-size:20px; font-weight:700; margin-top:4px;">{{ admin_labels.get(table, table|replace('_',' ')|title) }}</h2>
-      <p class="muted">Manage all rows in the <code>{{ table }}</code> model with complete CRUD capabilities.</p>
+      <p class="muted">{% if table in protected_tables %}Protected operational records. Use the relevant business workspace for changes.{% else %}Manage reference data in <code>{{ table }}</code>.{% endif %}</p>
     </div>
     <div style="display:flex; gap:10px;">
-      <a class="btn" href="{{ url_for('admin.create_row', table=table) }}">+ New Record</a>
-      <a class="btn secondary" href="{{ url_for('admin.directory') }}">All 50 Tables</a>
+      {% if table not in protected_tables %}<a class="btn" href="{{ url_for('admin.create_row', table=table) }}">+ New Record</a>{% endif %}
+      <a class="btn secondary" href="{{ url_for('admin.directory') }}">Data directory</a>
     </div>
   </div>
 </div>
@@ -51,14 +51,14 @@
           </td>
           {% endfor %}
           <td style="text-align:right; white-space:nowrap;">
-            <a href="{{ url_for('admin.edit_row', table=table, **key) }}" class="btn secondary small" style="margin-right:6px;">Edit</a>
+            {% if table not in protected_tables %}<a href="{{ url_for('admin.edit_row', table=table, **key) }}" class="btn secondary small" style="margin-right:6px;">Edit</a>
             <form method="post" action="{{ url_for('admin.delete_row', table=table) }}" style="display:inline;" onsubmit="return confirm('Are you sure you want to delete this record?');">
               {{ csrf() }}
               {% for k, v in key.items() %}
               <input type="hidden" name="{{ k }}" value="{{ v }}">
               {% endfor %}
               <button type="submit" class="btn small" style="background:#d4534b; border-color:#d4534b; color:#fff;">Delete</button>
-            </form>
+            </form>{% else %}<span class="muted">Protected</span>{% endif %}
           </td>
         </tr>
         {% else %}

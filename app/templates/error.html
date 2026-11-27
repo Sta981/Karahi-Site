@@ -1,9 +1,1 @@
-{% extends "base.html" %}
-{% block title %}{{ code }}{% endblock %}
-{% block content %}
-<section class="narrow center">
-  <h1>{{ code }}</h1>
-  <p>{{ message }}</p>
-  <p><a class="btn" href="{{ url_for('main.menu') }}">Back to the menu</a></p>
-</section>
-{% endblock %}
+{% extends 'base.html' %}{% block title %}{{ code }}{% endblock %}{% block content %}<section class="premium-empty"><span class="overline">KARAHI HOUSE · {{ code }}</span><h1>{{ message }}</h1><p>There is always something good waiting in our kitchen.</p><a class="brand-button dark" href="{{ url_for('main.home') }}">Back home ↗</a></section>{% endblock %}
